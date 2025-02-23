@@ -13,8 +13,6 @@
 ```bash
 pip install -r requirements.txt
 ```
-![图片](https://github.com/user-attachments/assets/67ebece2-9c91-4898-9681-dfdc6fb37210)
-
 ###Configure API Key
 1. Access the Deepsek Console（ https://cloud.siliconflow.cn/ ）Obtain API key
 2. Enter the key in the program settings interface and save it
@@ -46,6 +44,10 @@ Generate independent executable files using PyInstaller:
 ```bash
 pyinstaller --onefile --noconsole --add-data "config.json:." chat_app.py
 ```
+Linux:
+![图片](https://github.com/user-attachments/assets/5d77fe0d-bb4d-4144-8ab2-13cc2fe4b1c2)
+Windows:
+![图片](https://github.com/user-attachments/assets/67ebece2-9c91-4898-9681-dfdc6fb37210)
 ##  🤝  Contribution Guide
 Welcome to participate in project development through Issue and PR! Suggested contribution direction:
 -New Theme Color Scheme
