@@ -11,14 +11,14 @@
 ##  🚀  Quick Start
 ###Install dependencies
 ```bash
-pip install -r requirements.txt
+pip install --user -r requirements.txt
 ```
 ###Configure API Key
 1. Access the Deepsek Console（ https://cloud.siliconflow.cn/ ）Obtain API key
 2. Enter the key in the program settings interface and save it
 ###Run the program
 ```bash
-python AI.py
+python Deepseek-R1.py
 ```
 ##  🛠  Technology Stack
 -* * Core Framework * *: Python 3.10+ | Tkinter GUI
