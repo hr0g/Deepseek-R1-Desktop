@@ -9,14 +9,14 @@
 -* * Cross platform support * *: Perfectly runs on Windows/macOS/Linux
 -* * Intelligent History Management * *: Automatically saves conversation records, supports exporting JSON
 ##  🚀  Quick Start
-###Install dependencies
+### Install dependencies
 ```bash
 pip install --user -r requirements.txt
 ```
-###Configure API Key
+### Configure API Key
 1. Access the Deepsek Console（ https://cloud.siliconflow.cn/ ）Obtain API key
 2. Enter the key in the program settings interface and save it
-###Run the program
+### Run the program
 ```bash
 python Deepseek-R1.py
 ```
@@ -29,7 +29,7 @@ python Deepseek-R1.py
 -Cross platform window management
 -Responsive Layout Design
 ##  📚  developer's guide
-###Custom Theme
+### Custom Theme
 Modify the COLOR dictionary to adjust the color scheme:
 ```python
 COLORS = {
@@ -39,7 +39,7 @@ COLORS = {
 Background ":" # f8f9fa "# Background color
 }
 ```
-###Compile and package
+### Compile and package
 Generate independent executable files using PyInstaller:
 ```bash
 pyinstaller --onefile --noconsole --add-data "config.json:." chat_app.py
