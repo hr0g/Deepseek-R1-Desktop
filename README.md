@@ -1,5 +1,5 @@
 # Deepseek-R1 Desktop Chat Assistant 
-[![GitHub stars](https://img.shields.io/github/stars/yourname/deepseek-desktop-chat?style=for-the-badge)](https://github.com/hr0g/siliconflow-Deepseek-R1)
+[![GitHub stars](https://img.shields.io/github/stars/hr0g/siliconflow-Deepseek-R1?style=for-the-badge)](https://github.com/hr0g/siliconflow-Deepseek-R1)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue.svg?style=for-the-badge&logo=python)](https://www.python.org/)
 
