@@ -1,8 +1,8 @@
 # Deepseek-R1 Desktop Chat Assistant 
-[![GitHub stars]( https://img.shields.io/github/stars/yourname/deepseek-desktop-chat?style=for -the-badge)]( https://github.com/yourname/deepseek-desktop-chat/stargazers )
-[![License]( https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for -the-badge)]( https://opensource.org/licenses/Apache-2.0 )
-[![Python 3.8+]( https://img.shields.io/badge/Python-3.8%2B -blue.svg? style=for-the-badge&logo=python)]( https://www.python.org/ )
-![UI Screenshot](screenshot.png) <!--  Actual screenshots are required -->
+[![GitHub stars](https://img.shields.io/github/stars/yourname/deepseek-desktop-chat?style=for-the-badge)](https://github.com/hr0g/siliconflow-Deepseek-R1)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
+[![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue.svg?style=for-the-badge&logo=python)](https://www.python.org/)
+
 ##  ✨  Feature Highlights
 -* * Real time bilingual switching * *: One click switching between Chinese and English interfaces
 -Modern Theme System: Provides 6 preset color schemes and supports customization
@@ -13,6 +13,8 @@
 ```bash
 pip install -r requirements.txt
 ```
+![图片](https://github.com/user-attachments/assets/67ebece2-9c91-4898-9681-dfdc6fb37210)
+
 ###Configure API Key
 1. Access the Deepsek Console（ https://cloud.siliconflow.cn/ ）Obtain API key
 2. Enter the key in the program settings interface and save it
