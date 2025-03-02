@@ -18,7 +18,7 @@ pip install --user -r requirements.txt
 2. Enter the key in the program settings interface and save it
 ### Run the program
 ```bash
-python Deepseek-R1.py
+python Deepseek.py
 ```
 ##  🛠  Technology Stack
 -* * Core Framework * *: Python 3.10+ | Tkinter GUI
