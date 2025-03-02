@@ -1,39 +1,3 @@
-import sys
-import ctypes
-if sys.platform.startswith('win'):
-    ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
-sys.dont_write_bytecode = True  # Disable bytecode
-
-# Explicitly declare dependencies (to prevent automatic scanning)
-required_modules = [
-    'tkinter',
-    'json',
-    'queue',
-    'threading'
-]
-import zlib
-sys.setrecursionlimit(5000)  # Prevent excessive recursion during compression
-zlib.Z_DEFAULT_COMPRESSION = zlib.Z_BEST_COMPRESSION
-
-# Explicitly declare all dependencies (to prevent automatic scanning of redundant libraries)
-hidden_imports = [
-    'tkinter',
-    'tkinter.ttk',
-    'openai',
-    'queue'
-]
-
-# hook.py
-# Example of file content:
-from PyInstaller.utils.hooks import collect_all
-
-def hook(hook_api):
-    packages = ['openai']
-    for package in packages:
-        datas, binaries, hiddenimports = collect_all(package)
-        hook_api.add_datas(datas)
-        hook_api.add_binaries(binaries)
-        hook_api.add_imports(*hiddenimports)
 import tkinter as tk
 from tkinter import ttk, messagebox
 import json
@@ -43,12 +7,12 @@ import queue
 import datetime
 from openai import OpenAI
 
-CONFIG_FILE = "config.json"
+CONFIG_FILE = "siliconflow-config.json"
 HISTORY_FILE = "chat_history.json"
 
 LANGUAGES = {
     "zh_CN": {
-        "title": "Deepseek-R1 聊天",
+        "title": "Siliconflow/Deepseek-R1",
         "api_settings": "API 设置",
         "save_config": "保存配置",
         "chat_history": "聊天记录",
@@ -110,14 +74,12 @@ class ChatApp:
         self.update_ui_language()
 
     def create_widgets(self):
-        # API Settings Frame
         self.api_frame = ttk.LabelFrame(self.root)
         self.api_key_var = tk.StringVar(value=self.config.get("api_key", ""))
         self.api_entry = ttk.Entry(self.api_frame, textvariable=self.api_key_var, show="*")
         self.save_btn = ttk.Button(self.api_frame, command=self.save_config)
         self.lang_btn = ttk.Button(self.api_frame, command=self.toggle_language)
 
-        # Chat History Frame
         self.chat_frame = ttk.LabelFrame(self.root)
         self.chat_text = tk.Text(self.chat_frame, state=tk.DISABLED, wrap=tk.WORD)
         self.chat_text.tag_configure("role", font=('Arial', 10, 'bold'))
@@ -125,7 +87,6 @@ class ChatApp:
         self.scrollbar = ttk.Scrollbar(self.chat_frame, command=self.chat_text.yview)
         self.chat_text.configure(yscrollcommand=self.scrollbar.set)
 
-        # Input Frame
         self.input_frame = ttk.LabelFrame(self.root)
         self.input_text = tk.Text(self.input_frame, wrap=tk.WORD)
         self.input_scrollbar = ttk.Scrollbar(self.input_frame, command=self.input_text.yview)
@@ -138,7 +99,6 @@ class ChatApp:
         self.send_btn = ttk.Button(self.input_frame, command=self.send_message)
         self.clear_btn = ttk.Button(self.input_frame, command=self.clear_input)
 
-        # Status Bar
         self.status_var = tk.StringVar()
         self.status_bar = ttk.Label(self.root, relief=tk.SUNKEN, textvariable=self.status_var)
 
@@ -148,21 +108,18 @@ class ChatApp:
         self.root.columnconfigure(1, weight=1)
         self.root.rowconfigure(1, weight=1)
 
-        # API Frame
         self.api_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
         self.api_frame.columnconfigure(0, weight=1)
         self.api_entry.grid(row=0, column=0, padx=5, pady=2, sticky="ew")
         self.save_btn.grid(row=0, column=1, padx=5, pady=2)
         self.lang_btn.grid(row=0, column=2, padx=5, pady=2)
 
-        # Chat Frame
         self.chat_frame.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
         self.chat_frame.columnconfigure(0, weight=1)
         self.chat_frame.rowconfigure(0, weight=1)
         self.chat_text.grid(row=0, column=0, sticky="nsew")
         self.scrollbar.grid(row=0, column=1, sticky="ns")
 
-        # Input Frame
         self.input_frame.grid(row=1, column=1, padx=10, pady=5, sticky="nsew")
         self.input_frame.columnconfigure(0, weight=1)
         self.input_frame.rowconfigure(0, weight=1)
@@ -171,13 +128,11 @@ class ChatApp:
         self.send_btn.grid(row=1, column=0, padx=5, pady=2, sticky="ew")
         self.clear_btn.grid(row=2, column=0, padx=5, pady=2, sticky="ew")
 
-        # Status Bar
         self.status_bar.grid(row=2, column=0, columnspan=2, sticky="ew")
         
         self.api_frame.configure(padding=10)
         self.chat_frame.configure(padding=10)
         self.input_frame.configure(padding=10)
-      
         self.save_btn.grid_configure(padx=8)
         self.lang_btn.grid_configure(padx=8)
         self.send_btn.grid_configure(pady=4)
@@ -185,18 +140,16 @@ class ChatApp:
 
     def setup_styles(self):
         style = ttk.Style()
-        
         self.COLORS = {
-            "primary": "#3498db",    # Main Blue
-            "secondary": "#2ecc71",  # Fresh Green
-            "danger": "#e74c3c",     # Warning Red
-            "light": "#ffffff",      # White
-            "dark": "#2c3e50",       # Deep Gray Blue
-            "background": "#f8f9fa", # Light Gray Background
-            "scroll": "#bdc3c7"      # Scroll Bar Gray
+            "primary": "#3498db",
+            "secondary": "#2ecc71",
+            "danger": "#e74c3c",
+            "light": "#ffffff",
+            "dark": "#2c3e50",
+            "background": "#f8f9fa",
+            "scroll": "#bdc3c7"
         }
 
-# 自定义主题
         style.theme_create("modern", parent="clam", settings={
             ".": {
                 "configure": {
@@ -282,14 +235,12 @@ class ChatApp:
         })
         style.theme_use("modern")
 
-        # Customize the style of the status bar
         style.configure("status.TLabel",
                         background=self.COLORS["primary"],
                         foreground=self.COLORS["light"],
                         font=('Microsoft YaHei', 9),
                         padding=5)
 
-        # Customize chat box style
         self.chat_text.configure(
             bg=self.COLORS["light"],
             fg=self.COLORS["dark"],
@@ -299,11 +250,11 @@ class ChatApp:
             selectbackground="#dfe6e9"
         )
 
-        # Scroll bar style
+
         self.scrollbar.configure(style="Vertical.TScrollbar")
         self.input_scrollbar.configure(style="Vertical.TScrollbar")
 
-        # Input box style
+
         self.input_text.configure(
             bg=self.COLORS["light"],
             fg=self.COLORS["dark"],
@@ -317,13 +268,13 @@ class ChatApp:
             highlightthickness=1
         )
 
-        # Special button style
+
         style.map("Send.TButton",
                 background=[("active", "#2ecc71"), ("!disabled", "#27ae60")])
         style.map("Clear.TButton",
                 background=[("active", "#e74c3c"), ("!disabled", "#c0392b")])
 
-        # Apply special button styles
+        # 应用特殊按钮样式
         self.send_btn.configure(style="Send.TButton")
         self.clear_btn.configure(style="Clear.TButton")
 
@@ -417,17 +368,16 @@ class ChatApp:
 
         self.send_btn.config(state=tk.DISABLED)
         self.update_status(LANGUAGES[self.current_lang]["status_generating"])
-        self.append_message("用户", user_input)
-        self.save_message("用户", user_input)
+        self.append_message("User", user_input)
+        self.save_message("User", user_input)
         
         self.streaming = True
         self.append_message("Deepseek-R1", "", is_streaming=True)
         threading.Thread(target=self.process_request, args=(user_input,), daemon=True).start()
 
     def append_message(self, role, content, is_streaming=False):
-        # Modify message display style
         time_str = datetime.datetime.now().strftime("%H:%M")
-        role_color = "#3498db" if role == "用户" else "#e67e22"
+        role_color = "#3498db" if role == "User" else "#e67e22"
         
         self.chat_text.config(state=tk.NORMAL)
         self.chat_text.insert(tk.END, f"[{time_str}] ", ("time",))
@@ -440,7 +390,6 @@ class ChatApp:
         self.chat_text.config(state=tk.DISABLED)
         self.chat_text.see(tk.END)
 
-        # Configure text label styles
         self.chat_text.tag_configure("time", 
                                    foreground="#95a5a6",
                                    font=('Microsoft YaHei', 8))
@@ -525,13 +474,11 @@ class ChatApp:
         self.input_text.delete("1.0", tk.END)
 
     def handle_ctrl_a(self, event):
-        """Select all text without moving the cursor"""
         self.last_cursor_pos = self.input_text.index(tk.INSERT)
         self.input_text.tag_add("sel", "1.0", "end")
         return "break"
 
     def handle_left_arrow(self, event):
-        """←"""
         if self.input_text.tag_ranges("sel"):
             self.input_text.mark_set(tk.INSERT, "sel.first")
             self.input_text.see(tk.INSERT)
@@ -540,7 +487,6 @@ class ChatApp:
         return None
 
     def handle_right_arrow(self, event):
-        """→"""
         if self.input_text.tag_ranges("sel"):
             self.input_text.mark_set(tk.INSERT, "sel.last")
             self.input_text.see(tk.INSERT)
