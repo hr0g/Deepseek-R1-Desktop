@@ -13,6 +13,7 @@
 -**Intelligent History Management**: Automatically saves conversation records, supports exporting JSON
 ##  🚀  Quick Start
 ### Install dependencies
+Python >= 3.13 (Recommanded)      
 ```bash
 pip install --user -r requirements.txt
 ```
