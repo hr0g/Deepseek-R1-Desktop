@@ -1,3 +1,4 @@
-openai==1.12.0
+openai>=1.0.0
+pygments>=2.16.1
 typing-extensions>=4.5.0,<4.9.0
 jiter==0.6.1
