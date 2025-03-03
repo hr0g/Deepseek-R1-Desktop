@@ -6,6 +6,11 @@ import threading
 import queue
 import datetime
 from openai import OpenAI
+from pygments import lex
+from pygments.lexers import get_lexer_by_name
+from pygments.token import Token
+from pygments.style import Style
+from pygments.styles import get_style_by_name
 
 CONFIG_FILE = "Deepseek-config.json"
 HISTORY_FILE = "chat_history.json"
@@ -49,6 +54,21 @@ LANGUAGES = {
     }
 }
 
+class CustomDarkStyle(Style):
+    background_color = "#181D28"
+    styles = {
+        Token: "#FFFFFF",
+        Token.Comment: "#7F848E italic",
+        Token.Keyword: "#C678DD bold",
+        Token.Name.Function: "#61AFEF",
+        Token.String: "#98C379",
+        Token.Number: "#D19A66",
+        Token.Operator: "#56B6C2",
+        Token.Name.Class: "#E5C07B",
+        Token.Name.Builtin: "#56B6C2",
+        Token.Name.Decorator: "#C678DD",
+    }
+
 class ChatApp:
     def __init__(self, root):
         self.root = root
@@ -57,7 +77,11 @@ class ChatApp:
         self.streaming = False
         self.stream_start = None
         self.history = []
-        
+        self.raw_response_buffer = ""
+        self.code_buffer = ""
+        self.in_code_block = False
+        self.code_lang = "python"
+
         self.load_config()
         self.init_ui()
         self.load_history()
@@ -66,6 +90,7 @@ class ChatApp:
         self.setup_ui_updater()
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.clean_cursors()
+        self.configure_code_tags()
 
     def init_ui(self):
         self.create_widgets()
@@ -83,7 +108,6 @@ class ChatApp:
         self.chat_frame = ttk.LabelFrame(self.root)
         self.chat_text = tk.Text(self.chat_frame, state=tk.DISABLED, wrap=tk.WORD)
         self.chat_text.tag_configure("role", font=('Arial', 10, 'bold'))
-        self.chat_text.tag_configure("streaming", foreground="black")
         self.scrollbar = ttk.Scrollbar(self.chat_frame, command=self.chat_text.yview)
         self.chat_text.configure(yscrollcommand=self.scrollbar.set)
 
@@ -299,23 +323,87 @@ class ChatApp:
         self.chat_text.config(state=tk.NORMAL)
         if self.chat_text.get("end-2c") == "▌":
             self.chat_text.delete("end-2c")
+
+        self.process_content(content)
         
-        self.chat_text.insert(tk.END, content + "▌", "streaming")
+        self.chat_text.insert(tk.END, "▌", "streaming")
         self.chat_text.see(tk.END)
         self.chat_text.config(state=tk.DISABLED)
 
+    def process_content(self, content):
+        def process_segment(segment, in_code):
+            if not in_code:
+                if '```' not in segment:
+                    self.chat_text.insert(tk.END, segment, "streaming")
+                    return False, ""
+                
+                parts = segment.split('```', 1)
+                self.chat_text.insert(tk.END, parts[0], "streaming")
+                
+                if len(parts) > 1:
+                    lang_part = parts[1].split('\n', 1)
+                    self.code_lang = lang_part[0].strip() or "python"
+                    remaining = lang_part[1] if len(lang_part) > 1 else ""
+                    return True, remaining
+                return False, ""
+            else:
+                if '```' not in segment:
+                    return True, segment
+                
+                code_part, remaining = segment.split('```', 1)
+                full_code = self.code_buffer + code_part
+                self.highlight_code(full_code)
+                self.code_buffer = ""
+                if remaining:
+                    process_segment(remaining, False)
+                return False, ""
+
+        if self.in_code_block:
+            self.code_buffer += content
+            self.in_code_block, remaining = process_segment(self.code_buffer, True)
+            self.code_buffer = remaining
+        else:
+            remaining = content
+            while remaining:
+                self.in_code_block, remaining = process_segment(remaining, False)
+                if self.in_code_block:
+                    self.code_buffer = remaining
+                    break
+
+    def highlight_code(self, code):
+        try:
+            lexer = get_lexer_by_name(self.code_lang, stripall=True)
+        except:
+            lexer = get_lexer_by_name("text")
+
+        clean_code = code.replace('```', '')
+
+        for token, value in lex(clean_code, lexer):
+            token_str = str(token)
+            token_type = token_str.split('.')[-1]
+            tag_name = f"pygments_{token_type}"
+
+            self.chat_text.insert(tk.END, value, (tag_name, "code_block"))
+
     def finalize_response(self):
+        response_content = self.raw_response_buffer.strip()
+        self.save_message("assistant", response_content)
+        
+        self.raw_response_buffer = ""
+        
         self.streaming = False
         self.chat_text.config(state=tk.NORMAL)
+        
+        if self.in_code_block and self.code_buffer:
+            self.highlight_code(self.code_buffer)
+            self.code_buffer = ""
+            self.in_code_block = False
         
         while True:
             cursor_pos = self.chat_text.search("▌", "1.0", tk.END)
             if not cursor_pos:
                 break
             self.chat_text.delete(cursor_pos)
-        
-        response_content = self.chat_text.get(self.stream_start, "end-1c").strip()
-        self.save_message("assistant", response_content)
         
         self.chat_text.insert(tk.END, "\n")
         self.chat_text.config(state=tk.DISABLED)
@@ -325,6 +413,7 @@ class ChatApp:
 
     def process_request(self, user_input):
         try:
+            self.raw_response_buffer = ""
             messages = [
                 {"role": "system", "content": "You are a helpful assistant"}
             ]
@@ -346,7 +435,9 @@ class ChatApp:
 
             for chunk in response:
                 if chunk.choices[0].delta.content:
-                    self.response_queue.put(chunk.choices[0].delta.content)
+                    content = chunk.choices[0].delta.content
+                    self.raw_response_buffer += content  # 累积原始内容
+                    self.response_queue.put(content)
 
             self.response_queue.put(None)
 
@@ -388,20 +479,42 @@ class ChatApp:
             "user": "User",
             "assistant": "Deepseek-R1"
         }.get(role, role)
-        
+
         time_str = datetime.datetime.now().strftime("%H:%M")
-        role_color = "#3498db" if display_role == "User" else "#e67e22"
-        
+
         self.chat_text.config(state=tk.NORMAL)
         self.chat_text.insert(tk.END, f"[{time_str}] ", ("time",))
         self.chat_text.insert(tk.END, f"{display_role}: ", ("role", display_role))
+
         if is_streaming:
             self.stream_start = self.chat_text.index("end-1c")
             self.chat_text.insert(tk.END, "▌", "streaming")
         else:
-            self.chat_text.insert(tk.END, content + "\n\n", "content")
+            self.process_historical_content(content)
+
         self.chat_text.config(state=tk.DISABLED)
         self.chat_text.see(tk.END)
+
+    def process_historical_content(self, content):
+        in_code = False
+        code_buffer = []
+        current_lang = "python"
+        
+        for line in content.split('\n'):
+            if line.strip().startswith("```"):
+                if in_code:
+                    self.highlight_code('\n'.join(code_buffer))
+                    code_buffer = []
+                    in_code = False
+                else:
+                    lang = line.strip()[3:].strip()
+                    current_lang = lang if lang else "python"
+                    in_code = True
+            else:
+                if in_code:
+                    code_buffer.append(line)
+                else:
+                    self.chat_text.insert(tk.END, line + '\n')
 
     def save_message(self, role, content):
         self.history.append({
@@ -474,25 +587,20 @@ class ChatApp:
         self.input_text.delete("1.0", tk.END)
 
     def handle_ctrl_a(self, event):
-        self.last_cursor_pos = self.input_text.index(tk.INSERT)
         self.input_text.tag_add("sel", "1.0", "end")
         return "break"
 
     def handle_left_arrow(self, event):
         if self.input_text.tag_ranges("sel"):
             self.input_text.mark_set(tk.INSERT, "sel.first")
-            self.input_text.see(tk.INSERT)
             self.input_text.tag_remove("sel", "1.0", "end")
             return "break"
-        return None
 
     def handle_right_arrow(self, event):
         if self.input_text.tag_ranges("sel"):
             self.input_text.mark_set(tk.INSERT, "sel.last")
-            self.input_text.see(tk.INSERT)
             self.input_text.tag_remove("sel", "1.0", "end")
             return "break"
-        return None
 
     def toggle_language(self):
         self.current_lang = "en_US" if self.current_lang == "zh_CN" else "zh_CN"
@@ -520,6 +628,45 @@ class ChatApp:
             self.chat_text.delete(pos)
         self.chat_text.config(state=tk.DISABLED)
 
+    def configure_code_tags(self):
+        self.chat_text.tag_configure("code_block",
+                                   background="#f0f0f0",
+                                   font=('Consolas', 10),
+                                   lmargin1=20,
+                                   lmargin2=20,
+                                   rmargin=20)
+
+        style_config = {
+            "pygments_Comment": {"foreground": "#7F848E", "font": ('Consolas', 10, 'italic')},
+            "pygments_Keyword": {"foreground": "#C678DD", "font": ('Consolas', 10, 'bold')},
+            "pygments_String": {"foreground": "#98C379"},
+            "pygments_Name_Function": {"foreground": "#61AFEF"},
+            "pygments_Number": {"foreground": "#D19A66"},
+            "pygments_Operator": {"foreground": "#56B6C2", "font": ('Consolas', 10, 'bold')},
+            "pygments_Name_Class": {"foreground": "#E5C07B", "font": ('Consolas', 10, 'bold')},
+            "pygments_Name": {"foreground": "#61AFEF"},
+            "pygments_Name_Builtin": {"foreground": "#56B6C2"},
+            "pygments_Name_Decorator": {"foreground": "#C678DD"},
+            "pygments_Name_Attribute": {"foreground": "#E06C75"},
+            "pygments_Name_Exception": {"foreground": "#D19A66"},
+            "pygments_Generic_Heading": {"foreground": "#E5C07B", "font": ('Consolas', 12, 'bold')},
+            "pygments_Generic_Subheading": {"foreground": "#E5C07B", "font": ('Consolas', 11, 'bold')},
+            
+            "pygments_Comment": {"foreground": "#7F848E", "font": ('Consolas', 10, 'italic')},
+            "pygments_Keyword": {"foreground": "#C678DD", "font": ('Consolas', 10, 'bold')},
+            "pygments_Keyword_Constant": {"foreground": "#D19A66", "font": ('Consolas', 10, 'bold')},
+            "pygments_Keyword_Namespace": {"foreground": "#C678DD", "font": ('Consolas', 10, 'bold')},
+            "pygments_String_Doc": {"foreground": "#98C379", "font": ('Consolas', 10, 'italic')},
+            "pygments_Name_Class": {"foreground": "#E5C07B", "font": ('Consolas', 10, 'bold')},
+            "pygments_Name_Tag": {"foreground": "#E06C75"},
+            "pygments_Name_Entity": {"foreground": "#D19A66"},
+            "pygments_Literal_Number": {"foreground": "#D19A66"},
+            "pygments_Generic_Prompt": {"foreground": "#ABB2BF"},
+            "pygments_Generic_Traceback": {"foreground": "#E06C75"},
+        }
+
+        for tag, config in style_config.items():
+            self.chat_text.tag_configure(tag, **config)
 if __name__ == "__main__":
     root = tk.Tk()
     app = ChatApp(root)
