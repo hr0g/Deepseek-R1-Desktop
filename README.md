@@ -17,8 +17,8 @@
 pip install --user -r requirements.txt
 ```
 ### Configure API Key
-1. Access the Deepsek Console（ https://cloud.siliconflow.cn/ ）Obtain API key
-2. Enter the key in the program settings interface and save it
+1. Access the Deepsek Console（ https://platform.deepseek.com/api_keys or https://cloud.siliconflow.cn/ ）to Obtain API key
+2. Enter the key in the corresponding program settings interface and save it
 ### Run the program
 ```bash
 python Deepseek.pyw
