@@ -4,13 +4,13 @@
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue.svg?style=for-the-badge&logo=python)](https://www.python.org/)
 
 ##  ✨  Feature Highlights
--**Real time bilingual switching**: One click switching between Chinese and English interfaces
+- **Real time bilingual switching**: One click switching between Chinese and English interfaces
 
--**Modern Theme System**: Provides 6 preset color schemes and supports customization
+- **Modern Theme System**: Provides 6 preset color schemes and supports customization
 
--**Cross platform support**: Perfectly runs on Windows/macOS/Linux
+- **Cross platform support**: Perfectly runs on Windows/macOS/Linux
 
--**Intelligent History Management**: Automatically saves conversation records, supports exporting JSON
+- **Intelligent History Management**: Automatically saves conversation records, supports exporting JSON
 ##  🚀  Quick Start
 ### Install dependencies
 Python >= 3.13 (Recommanded)      
