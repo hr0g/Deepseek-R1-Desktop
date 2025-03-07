@@ -25,19 +25,19 @@ pip install --user -r requirements.txt
 python Deepseek.pyw
 ```
 ##  🛠  Technology Stack
--**Core Framework**: Python 3.10+ | Tkinter GUI
+- **Core Framework**: Python 3.10+ | Tkinter GUI
 
--**AI Integration**: Deepseek-R1 API | OpenAI SDK
+- **AI Integration**: Deepseek-R1 API | OpenAI SDK
 
--Advanced Features:
+- Advanced Features:
 
--Multi threaded task processing
+- Multi threaded task processing
 
--ZLIB compression optimization
+- ZLIB compression optimization
 
--Cross platform window management
+- Cross platform window management
 
--Responsive Layout Design
+- Responsive Layout Design
 ##  📚  developer's guide
 ### Custom Theme
 Modify the COLOR dictionary to adjust the color scheme:
@@ -62,10 +62,10 @@ Windows:
 
 ##  🤝  Contribution Guide
 Welcome to participate in project development through Issue and PR! Suggested contribution direction:
--New Theme Color Scheme
--Improve input box interaction logic
--Add message tagging/bookmarking function
--Develop plugin system
+- New Theme Color Scheme
+- Improve input box interaction logic
+- Add message tagging/bookmarking function
+- Develop plugin system
 ##  📜  licence
 Apache 2.0  ©  2024 [hr0g/xrzy] 
 Project Under DeVelOpmEnt...
