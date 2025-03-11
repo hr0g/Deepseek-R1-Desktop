@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import json
 import os
+import re
 import threading
 import queue
 import datetime
@@ -76,11 +77,13 @@ class ChatApp:
         self.client = None
         self.streaming = False
         self.stream_start = None
+        self.auto_scroll = True
         self.history = []
         self.raw_response_buffer = ""
         self.code_buffer = ""
         self.in_code_block = False
         self.code_lang = "python"
+        self.line_buffer = ''
 
         self.load_config()
         self.init_ui()
@@ -107,7 +110,8 @@ class ChatApp:
 
         self.chat_frame = ttk.LabelFrame(self.root)
         self.chat_text = tk.Text(self.chat_frame, state=tk.DISABLED, wrap=tk.WORD)
-        self.chat_text.tag_configure("role", font=('Arial', 10, 'bold'))
+        self.chat_text.tag_configure("user_role", foreground="#3498db", font=('Arial', 12, 'bold'))
+        self.chat_text.tag_configure("assistant_role", foreground="#e67e22", font=('Arial', 12, 'bold'))
         self.scrollbar = ttk.Scrollbar(self.chat_frame, command=self.chat_text.yview)
         self.chat_text.configure(yscrollcommand=self.scrollbar.set)
 
@@ -119,7 +123,8 @@ class ChatApp:
         self.input_text.bind("<Control-a>", self.handle_ctrl_a)
         self.input_text.bind("<Left>", self.handle_left_arrow)
         self.input_text.bind("<Right>", self.handle_right_arrow)
-        
+        self.input_text.bind("<Return>", self.handle_enter_key)
+
         self.send_btn = ttk.Button(self.input_frame, command=self.send_message)
         self.clear_btn = ttk.Button(self.input_frame, command=self.clear_input)
 
@@ -301,6 +306,9 @@ class ChatApp:
 
     def on_mousewheel(self, event):
         self.input_text.yview_scroll(-1 * (event.delta // 120), "units")
+        """用户手动滚动时更新标志"""
+        _, y_end = self.chat_text.yview()
+        return "break"  # 阻止默认滚动事件
 
     def setup_ui_updater(self):
         def check_queue():
@@ -308,8 +316,13 @@ class ChatApp:
                 while True:
                     content = self.response_queue.get_nowait()
                     if content is None:
+                        if self.line_buffer != '':
+                            self._insert_plain_text(self.line_buffer)
+                            self.line_buffer=''
                         self.finalize_response()
                         break
+                    _, y_end = self.chat_text.yview()
+                    self.auto_scroll = y_end >= 0.999
                     self.update_streaming_content(content)
             except queue.Empty:
                 pass
@@ -327,48 +340,84 @@ class ChatApp:
         self.process_content(content)
         
         self.chat_text.insert(tk.END, "▌", "streaming")
-        self.chat_text.see(tk.END)
+        if self.auto_scroll:
+            self.chat_text.see(tk.END)
         self.chat_text.config(state=tk.DISABLED)
 
     def process_content(self, content):
-        def process_segment(segment, in_code):
-            if not in_code:
-                if '```' not in segment:
-                    self.chat_text.insert(tk.END, segment, "streaming")
-                    return False, ""
-                
-                parts = segment.split('```', 1)
-                self.chat_text.insert(tk.END, parts[0], "streaming")
-                
-                if len(parts) > 1:
-                    lang_part = parts[1].split('\n', 1)
-                    self.code_lang = lang_part[0].strip() or "python"
-                    remaining = lang_part[1] if len(lang_part) > 1 else ""
-                    return True, remaining
-                return False, ""
-            else:
-                if '```' not in segment:
-                    return True, segment
-                
-                code_part, remaining = segment.split('```', 1)
-                full_code = self.code_buffer + code_part
-                self.highlight_code(full_code)
-                self.code_buffer = ""
-                if remaining:
-                    process_segment(remaining, False)
-                return False, ""
-
-        if self.in_code_block:
-            self.code_buffer += content
-            self.in_code_block, remaining = process_segment(self.code_buffer, True)
-            self.code_buffer = remaining
+        self.line_buffer += content
+        lines = self.line_buffer.split('\n')
+        
+        if self.line_buffer and self.line_buffer[-1] != '\n':
+            self.line_buffer = lines[-1]
+            lines = lines[:-1]
         else:
-            remaining = content
-            while remaining:
-                self.in_code_block, remaining = process_segment(remaining, False)
-                if self.in_code_block:
-                    self.code_buffer = remaining
-                    break
+            self.line_buffer = ''
+
+        for line in lines:
+            self._process_line(line.strip('\r'))
+
+    def _process_line(self, line):
+        if not self.in_code_block:
+            start_match = re.fullmatch(r'^\s*```\s*(\w*)\s*$', line)
+            if start_match:
+                self.in_code_block = True
+                self.code_lang = start_match.group(1).strip() or "python"
+                self.code_buffer = []
+                return
+            if line == "---":
+               self.chat_text.insert(tk.END, "\n", "hr")
+            elif re.match(r'^###\s*(.*?)\*\*(.+?)\*\*$', line):
+                pattern = re.compile(r'^###\s*(.*?)\*\*(.+?)\*\*$')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, match.group(1) + match.group(2) + '\n', "deepseek_header")
+            elif re.match(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$', line):
+                pattern = re.compile(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, match.group(1) +" " + match.group(2), "deepseek_sub_header")
+                self.chat_text.insert(tk.END, match.group(3) + '\n')
+            elif re.match(r'^#+\s*(.*)$', line):
+                pattern = re.compile(r'^#+\s*(.*)$')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, match.group(1), "deepseek_header")
+            elif re.match(r'^\s+\*\*(.*?)\*\*', line):
+                pattern = re.compile(r'^\s+\*\*(.*?)\*\*')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, match.group(1) + '\n', "dot_header")
+            elif re.match(r'^\d+\.\s+\*\*(.*?)\*\*', line):
+                pattern = re.compile(r'^(\d+\.\s+)\*\*(.*?)\*\*')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, match.group(1) + match.group(2) + '\n', "num_header")
+            elif re.match(r'^-\s\*\*', line):
+                pattern = re.compile(r'-\s\*\*(.*)\*\*')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, "• " + match.group(1) + '\n', "dot_header")
+            elif re.match(r'^\s+-\s', line):
+                pattern = re.compile(r'^\s+-\s+(.*)')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, "        • " + match.group(1) + '\n')
+            elif re.match(r'^-\s', line):
+                pattern = re.compile(r'-\s+(.*)')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, "• " + match.group(1) + '\n')
+            else:
+                self.chat_text.insert(tk.END, line + '\n')
+            #self._insert_plain_text(line + '\n')
+        else:
+            # 检测代码块结束
+            if re.fullmatch(r'^\s*```\s*$', line):
+                self.in_code_block = False
+                self.highlight_code('\n'.join(self.code_buffer))
+                self.code_buffer = []
+                return
+            # 累积代码行
+            self.code_buffer.append(line)
+
+    def _insert_plain_text(self, text):
+        """安全插入普通文本"""
+        self.chat_text.config(state=tk.NORMAL)
+        self.chat_text.insert(tk.END, text, "streaming")
+        self.chat_text.config(state=tk.DISABLED)
 
     def highlight_code(self, code):
         try:
@@ -376,13 +425,10 @@ class ChatApp:
         except:
             lexer = get_lexer_by_name("text")
 
-        clean_code = code.replace('```', '')
-
-        for token, value in lex(clean_code, lexer):
+        for token, value in lex(code, lexer):
             token_str = str(token)
             token_type = token_str.split('.')[-1]
             tag_name = f"pygments_{token_type}"
-
             self.chat_text.insert(tk.END, value, (tag_name, "code_block"))
 
     def finalize_response(self):
@@ -483,8 +529,10 @@ class ChatApp:
         time_str = datetime.datetime.now().strftime("%H:%M")
 
         self.chat_text.config(state=tk.NORMAL)
+
         self.chat_text.insert(tk.END, f"[{time_str}] ", ("time",))
-        self.chat_text.insert(tk.END, f"{display_role}: ", ("role", display_role))
+        role_tag = "user_role" if role == "user" else "assistant_role"
+        self.chat_text.insert(tk.END, f"{display_role}:\n", (role_tag,))
 
         if is_streaming:
             self.stream_start = self.chat_text.index("end-1c")
@@ -514,7 +562,43 @@ class ChatApp:
                 if in_code:
                     code_buffer.append(line)
                 else:
-                    self.chat_text.insert(tk.END, line + '\n')
+                    if line == "---":
+                       self.chat_text.insert(tk.END, "\n", "hr")
+                    elif re.match(r'^###\s*(.*?)\*\*(.+?)\*\*$', line):
+                        pattern = re.compile(r'^###\s*(.*?)\*\*(.+?)\*\*$')
+                        match = pattern.match(line)
+                        self.chat_text.insert(tk.END, match.group(1) + match.group(2) + '\n', "deepseek_header")
+                    elif re.match(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$', line):
+                        pattern = re.compile(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$')
+                        match = pattern.match(line)
+                        self.chat_text.insert(tk.END, match.group(1) + " " + match.group(2), "deepseek_sub_header")
+                        self.chat_text.insert(tk.END, match.group(3) + '\n')
+                    elif re.match(r'^#+\s*(.*)$', line):
+                        pattern = re.compile(r'^#+\s*(.*)$')
+                        match = pattern.match(line)
+                        self.chat_text.insert(tk.END, match.group(1) + '\n', "deepseek_header")
+                    elif re.match(r'^\s*\*\*(.*?)\*\*', line):
+                        pattern = re.compile(r'^\s*\*\*(.*?)\*\*')
+                        match = pattern.match(line)
+                        self.chat_text.insert(tk.END, match.group(1) + '\n', "dot_header")
+                    elif re.match(r'^\d+\.\s+\*\*(.*?)\*\*', line):
+                        pattern = re.compile(r'^(\d+\.\s+)\*\*(.*?)\*\*')
+                        match = pattern.match(line)
+                        self.chat_text.insert(tk.END, match.group(1) + match.group(2) + '\n', "num_header")
+                    elif re.match(r'^-\s\*\*', line):
+                        pattern = re.compile(r'-\s\*\*(.*)\*\*')
+                        match = pattern.match(line)
+                        self.chat_text.insert(tk.END, "• " + match.group(1) + '\n', "dot_header")
+                    elif re.match(r'^\s+-\s', line):
+                        pattern = re.compile(r'^\s+-\s+(.*)')
+                        match = pattern.match(line)
+                        self.chat_text.insert(tk.END, "        • " + match.group(1) + '\n')
+                    elif re.match(r'^-\s', line):
+                        pattern = re.compile(r'-\s+(.*)')
+                        match = pattern.match(line)
+                        self.chat_text.insert(tk.END, "• " + match.group(1) + '\n')
+                    else:
+                        self.chat_text.insert(tk.END, line + '\n')
 
     def save_message(self, role, content):
         self.history.append({
@@ -594,18 +678,20 @@ class ChatApp:
         if self.input_text.tag_ranges("sel"):
             self.input_text.mark_set(tk.INSERT, "sel.first")
             self.input_text.tag_remove("sel", "1.0", "end")
+            self.input_text.see(self.input_text.tag_ranges("sel")[0])
             return "break"
 
     def handle_right_arrow(self, event):
         if self.input_text.tag_ranges("sel"):
             self.input_text.mark_set(tk.INSERT, "sel.last")
             self.input_text.tag_remove("sel", "1.0", "end")
+            self.input_text.see(self.input_text.tag_ranges("sel")[1])
             return "break"
 
     def toggle_language(self):
-        self.current_lang = "en_US" if self.current_lang == "zh_CN" else "zh_CN"
-        self.update_ui_language()
-        self.save_config()
+            self.current_lang = "en_US" if self.current_lang == "zh_CN" else "zh_CN"
+            self.update_ui_language()
+            self.save_config()
 
     def update_ui_language(self):
         lang = LANGUAGES[self.current_lang]
@@ -628,6 +714,13 @@ class ChatApp:
             self.chat_text.delete(pos)
         self.chat_text.config(state=tk.DISABLED)
 
+    def handle_enter_key(self, event):
+        if event.state & 0x0001:
+            return
+        else:
+            self.send_message()
+            return "break"
+
     def configure_code_tags(self):
         self.chat_text.tag_configure("code_block",
                                    background="#f0f0f0",
@@ -635,6 +728,45 @@ class ChatApp:
                                    lmargin1=20,
                                    lmargin2=20,
                                    rmargin=20)
+
+        self.chat_text.tag_configure("sel", 
+                                   background="#C0C0C0")
+
+        self.chat_text.tag_configure("hr",
+                                   background="#D3D3D3",
+                                   relief="sunken",
+                                   borderwidth=1,
+                                   spacing1=0,
+                                   spacing3=0,
+                                   lmargin1=0,
+                                   lmargin2=0,
+                                   rmargin=0,
+                                   font=('', 1))
+
+        self.chat_text.tag_configure("deepseek_header",
+                                   font=('Microsoft YaHei', 13, 'bold'),
+                                   foreground="#2C3E50",
+                                   spacing3=8)
+
+        self.chat_text.tag_configure("deepseek_sub_header",
+                                   font=('Microsoft YaHei', 12, 'bold'),
+                                   foreground="#2C3E50",
+                                   spacing3=8)
+
+        self.chat_text.tag_configure("dot_header",
+                                   font=('Microsoft YaHei', 11, 'bold'),
+                                   foreground="#2C3E50",
+                                   lmargin1=10)
+
+        self.chat_text.tag_configure("deepseek_bold",
+                                   font=('Microsoft YaHei', 10, 'bold italic'),
+                                   foreground="#2C3E50",
+                                   lmargin1=10)
+
+        self.chat_text.tag_configure("num_header",
+                                   font=('Microsoft YaHei', 11, 'bold'),
+                                   foreground="#2C3E50",
+                                   lmargin1=20)
 
         style_config = {
             "pygments_Comment": {"foreground": "#7F848E", "font": ('Consolas', 10, 'italic')},
@@ -651,9 +783,6 @@ class ChatApp:
             "pygments_Name_Exception": {"foreground": "#D19A66"},
             "pygments_Generic_Heading": {"foreground": "#E5C07B", "font": ('Consolas', 12, 'bold')},
             "pygments_Generic_Subheading": {"foreground": "#E5C07B", "font": ('Consolas', 11, 'bold')},
-            
-            "pygments_Comment": {"foreground": "#7F848E", "font": ('Consolas', 10, 'italic')},
-            "pygments_Keyword": {"foreground": "#C678DD", "font": ('Consolas', 10, 'bold')},
             "pygments_Keyword_Constant": {"foreground": "#D19A66", "font": ('Consolas', 10, 'bold')},
             "pygments_Keyword_Namespace": {"foreground": "#C678DD", "font": ('Consolas', 10, 'bold')},
             "pygments_String_Doc": {"foreground": "#98C379", "font": ('Consolas', 10, 'italic')},
@@ -667,6 +796,9 @@ class ChatApp:
 
         for tag, config in style_config.items():
             self.chat_text.tag_configure(tag, **config)
+        self.chat_text.tag_lower("code_block", "sel")  # 背景层在选中层之下
+        self.chat_text.tag_raise("sel")  # 选中层始终在最前
+
 if __name__ == "__main__":
     root = tk.Tk()
     app = ChatApp(root)
