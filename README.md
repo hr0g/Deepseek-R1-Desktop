@@ -57,7 +57,8 @@ pyinstaller --onefile --noconsole --add-data "config.json:." chat_app.py
 Linux:
 ![image](https://github.com/user-attachments/assets/3ad9bc7a-f0f2-4f9f-a6ea-0f9d7836dd57)
 Windows:
-![image](https://github.com/user-attachments/assets/daaad05e-85e9-4f54-a01c-61645de2a58a)
+![image](https://github.com/user-attachments/assets/e18e8b9a-5650-405c-acb4-7c5311b6dd33)
+
 
 
 
