@@ -370,36 +370,29 @@ class ChatApp:
             elif re.match(r'^###\s*(.*?)\*\*(.+?)\*\*$', line):
                 pattern = re.compile(r'^###\s*(.*?)\*\*(.+?)\*\*$')
                 match = pattern.match(line)
-                self.chat_text.insert(tk.END, match.group(1) + match.group(2) + '\n', "deepseek_header")
+                self.chat_text.insert(tk.END, f"{match.group(1)}{match.group(2)}\n", "deepseek_header")
+            elif re.match(r'^-\s\*\*', line):
+                pattern = re.compile(r'-\s\*\*(.*)\*\*')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, f"• {match.group(1)}\n", "dot_header")
+            elif re.match(r'^\s+-\s', line):
+                pattern = re.compile(r'^\s+-\s+(.*)')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, f"        • {match.group(1)}\n")
+            elif re.match(r'^-\s', line):
+                pattern = re.compile(r'-\s+(.*)')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, f"• {match.group(1)}\n")
             elif re.match(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$', line):
                 pattern = re.compile(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$')
                 match = pattern.match(line)
-                self.chat_text.insert(tk.END, match.group(1) +" " + match.group(2), "deepseek_sub_header")
-                self.chat_text.insert(tk.END, match.group(3) + '\n')
+                prefix = f"{match.group(1)} " if match.group(1) else ""
+                self.chat_text.insert(tk.END, prefix + match.group(2), "deepseek_sub_header")
+                self.chat_text.insert(tk.END, f"{match.group(3)}\n")
             elif re.match(r'^#+\s*(.*)$', line):
                 pattern = re.compile(r'^#+\s*(.*)$')
                 match = pattern.match(line)
                 self.chat_text.insert(tk.END, match.group(1), "deepseek_header")
-            elif re.match(r'^\s+\*\*(.*?)\*\*', line):
-                pattern = re.compile(r'^\s+\*\*(.*?)\*\*')
-                match = pattern.match(line)
-                self.chat_text.insert(tk.END, match.group(1) + '\n', "dot_header")
-            elif re.match(r'^\d+\.\s+\*\*(.*?)\*\*', line):
-                pattern = re.compile(r'^(\d+\.\s+)\*\*(.*?)\*\*')
-                match = pattern.match(line)
-                self.chat_text.insert(tk.END, match.group(1) + match.group(2) + '\n', "num_header")
-            elif re.match(r'^-\s\*\*', line):
-                pattern = re.compile(r'-\s\*\*(.*)\*\*')
-                match = pattern.match(line)
-                self.chat_text.insert(tk.END, "• " + match.group(1) + '\n', "dot_header")
-            elif re.match(r'^\s+-\s', line):
-                pattern = re.compile(r'^\s+-\s+(.*)')
-                match = pattern.match(line)
-                self.chat_text.insert(tk.END, "        • " + match.group(1) + '\n')
-            elif re.match(r'^-\s', line):
-                pattern = re.compile(r'-\s+(.*)')
-                match = pattern.match(line)
-                self.chat_text.insert(tk.END, "• " + match.group(1) + '\n')
             else:
                 self.chat_text.insert(tk.END, line + '\n')
             #self._insert_plain_text(line + '\n')
@@ -567,36 +560,29 @@ class ChatApp:
                     elif re.match(r'^###\s*(.*?)\*\*(.+?)\*\*$', line):
                         pattern = re.compile(r'^###\s*(.*?)\*\*(.+?)\*\*$')
                         match = pattern.match(line)
-                        self.chat_text.insert(tk.END, match.group(1) + match.group(2) + '\n', "deepseek_header")
-                    elif re.match(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$', line):
-                        pattern = re.compile(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$')
-                        match = pattern.match(line)
-                        self.chat_text.insert(tk.END, match.group(1) + " " + match.group(2), "deepseek_sub_header")
-                        self.chat_text.insert(tk.END, match.group(3) + '\n')
-                    elif re.match(r'^#+\s*(.*)$', line):
-                        pattern = re.compile(r'^#+\s*(.*)$')
-                        match = pattern.match(line)
-                        self.chat_text.insert(tk.END, match.group(1) + '\n', "deepseek_header")
-                    elif re.match(r'^\s*\*\*(.*?)\*\*', line):
-                        pattern = re.compile(r'^\s*\*\*(.*?)\*\*')
-                        match = pattern.match(line)
-                        self.chat_text.insert(tk.END, match.group(1) + '\n', "dot_header")
-                    elif re.match(r'^\d+\.\s+\*\*(.*?)\*\*', line):
-                        pattern = re.compile(r'^(\d+\.\s+)\*\*(.*?)\*\*')
-                        match = pattern.match(line)
-                        self.chat_text.insert(tk.END, match.group(1) + match.group(2) + '\n', "num_header")
+                        self.chat_text.insert(tk.END, f"{match.group(1)}{match.group(2)}\n", "deepseek_header")
                     elif re.match(r'^-\s\*\*', line):
                         pattern = re.compile(r'-\s\*\*(.*)\*\*')
                         match = pattern.match(line)
-                        self.chat_text.insert(tk.END, "• " + match.group(1) + '\n', "dot_header")
+                        self.chat_text.insert(tk.END, f"• {match.group(1)}\n", "dot_header")
                     elif re.match(r'^\s+-\s', line):
                         pattern = re.compile(r'^\s+-\s+(.*)')
                         match = pattern.match(line)
-                        self.chat_text.insert(tk.END, "        • " + match.group(1) + '\n')
+                        self.chat_text.insert(tk.END, f"        • {match.group(1)}\n")
                     elif re.match(r'^-\s', line):
                         pattern = re.compile(r'-\s+(.*)')
                         match = pattern.match(line)
-                        self.chat_text.insert(tk.END, "• " + match.group(1) + '\n')
+                        self.chat_text.insert(tk.END, f"• {match.group(1)}\n")
+                    elif re.match(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$', line):
+                        pattern = re.compile(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$')
+                        match = pattern.match(line)
+                        prefix = f"{match.group(1)} " if match.group(1) else ""
+                        self.chat_text.insert(tk.END, prefix + match.group(2), "deepseek_sub_header")
+                        self.chat_text.insert(tk.END, f"{match.group(3)}\n")
+                    elif re.match(r'^#+\s*(.*)$', line):
+                        pattern = re.compile(r'^#+\s*(.*)$')
+                        match = pattern.match(line)
+                        self.chat_text.insert(tk.END, match.group(1), "deepseek_header")
                     else:
                         self.chat_text.insert(tk.END, line + '\n')
 
