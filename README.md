@@ -22,8 +22,8 @@ pip install --user -r requirements.txt    
 ```
 ### Build .exe with Linux Platform:
 ```bash
-python setup.bat build
-python sil-setup.bat build
+python setup.py build
+python sil-setup.py build
 ```
 ### Configure API Key
 1. Access the Deepsek Console（ https://platform.deepseek.com/api_keys or https://cloud.siliconflow.cn/ ）to Obtain API key
