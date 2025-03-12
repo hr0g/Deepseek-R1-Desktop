@@ -396,12 +396,6 @@ class ChatApp:
                 match = pattern.match(line)
                 self.chat_text.insert(tk.END, "• " + match.group(1) + '\n')
             elif re.match(r'^.*?\*\*(.+?)\*\*.*?$', line):
-                pattern = re.compile(r'^(.*?)\*\*(.+?)\*\*(.*?)$')
-                match = pattern.match(line)
-                self.chat_text.insert(tk.END, match.group(1))
-                self.chat_text.insert(tk.END, match.group(2), "deepseek_sub_header")
-                self.chat_text.insert(tk.END, match.group(3))
-            elif re.match(r'^.*?\*\*(.+?)\*\*.*?$', line):
                 pattern = r"(\*\*.*?\*\*)"
                 parts = re.split(pattern, line)
                 last = parts[-1]
