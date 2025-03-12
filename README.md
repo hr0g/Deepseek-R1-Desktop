@@ -16,6 +16,7 @@
 Python >= 3.13 (Recommanded)      
 ```bash
 pip install --user -r requirements.txt
+python setup.py build
 ```
 ### Configure API Key
 1. Access the Deepsek Console（ https://platform.deepseek.com/api_keys or https://cloud.siliconflow.cn/ ）to Obtain API key
