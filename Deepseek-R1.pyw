@@ -564,7 +564,7 @@ class ChatApp:
                 else:
                     lang = line.strip()[3:].strip()
                     if lang.startswith("objective"):
-                        current_lang = "objective-c"  # 显式处理Objective-C别名
+                        current_lang = "objective-c"
                     else:
                         current_lang = "python"
                     in_code = True
@@ -792,52 +792,64 @@ class ChatApp:
                                    font=('Consolas', 10, 'italic'))
 
         style_config = {
-            "pygments_Comment": {"foreground": "#7F848E", "font": ('Consolas', 10, 'italic')},
-            "pygments_Keyword": {"foreground": "#C678DD", "font": ('Consolas', 10, 'bold')},
-            "pygments_String": {"foreground": "#98C379"},
-            "pygments_String_Escape": {"foreground": "#56B6C2", "font": ('Consolas', 10, 'bold')},
-            "pygments_Name_Function": {"foreground": "#61AFEF"},
-            "pygments_Number_Bin": {"foreground": "#D19A66"},
-            "pygments_Number_Float": {"foreground": "#D19A66"},
-            "pygments_Number": {"foreground": "#D19A66"},
-            "pygments_Operator": {"foreground": "#56B6C2", "font": ('Consolas', 11)},
-            "pygments_Operator_Word": {"foreground": "#C679DD", "font": ('Consolas', 11, 'bold')},
-            "pygments_Name_Class": {"foreground": "#E5C07B", "font": ('Consolas', 10, 'bold')},
             "pygments_Name": {"foreground": "#61AFEF"},
             "pygments_Name_Builtin": {"foreground": "#56B6C2"},
+            "pygments_Name_Class": {"foreground": "#E5C07B", "font": ('Consolas', 10, 'bold')},
             "pygments_Name_Decorator": {"foreground": "#C678DD"},
             "pygments_Name_Attribute": {"foreground": "#E06C75"},
             "pygments_Name_Exception": {"foreground": "#D19A66"},
             "pygments_Name_Constant": {"foreground": "#D19A66"},
+            "pygments_Name_Tag": {"foreground": "#E06C75"},
+            "pygments_Name_Entity": {"foreground": "#D19A66"},
             "pygments_Name_Label": {"foreground": "#E06C75"},
             "pygments_Name_Namespace": {"foreground": "#E06C75"},
             "pygments_Name_Variable": {"foreground": "#E06C75"},
-            "pygments_Generic_Heading": {"foreground": "#E5C07B", "font": ('Consolas', 12, 'bold')},
-            "pygments_Generic_Subheading": {"foreground": "#E5C07B", "font": ('Consolas', 11, 'bold')},
-            "pygments_Keyword_Constant": {"foreground": "#D19A66", "font": ('Consolas', 10, 'bold')},
+            "pygments_Name_Function": {"foreground": "#61AFEF"},
+
+            "pygments_Comment": {"foreground": "#7F848E", "font": ('Consolas', 10, 'italic')},
+            "pygments_Comment_Preproc": {"foreground": "#C678DD", "font": ('Consolas', 10, 'bold')},
+            "pygments_Comment_Single": {"foreground": "#C678DD", "font": ('Consolas', 10, 'bold')},
+            "pygments_Comment_Multiple": {"foreground": "#C678DD", "font": ('Consolas', 10, 'bold')},
+            
+            "pygments_Keyword": {"foreground": "#C678DD", "font": ('Consolas', 10, 'bold')},
             "pygments_Keyword_Namespace": {"foreground": "#C678DD", "font": ('Consolas', 10, 'bold')},
+            "pygments_Keyword_Constant": {"foreground": "#D19A66", "font": ('Consolas', 10, 'bold')},
+
+            "pygments_String": {"foreground": "#98C379"},
             "pygments_String_Doc": {"foreground": "#98C379", "font": ('Consolas', 10, 'italic')},
-            "pygments_Name_Class": {"foreground": "#E5C07B", "font": ('Consolas', 10, 'bold')},
-            "pygments_Name_Tag": {"foreground": "#E06C75"},
-            "pygments_Name_Entity": {"foreground": "#D19A66"},
+            "pygments_String_Escape": {"foreground": "#56B6C2", "font": ('Consolas', 10, 'bold')},
+            
+            "pygments_Text": {"foreground": "#D19A66"},
+            
+            "pygments_Number": {"foreground": "#D19A66"},
+            "pygments_Number_Bin": {"foreground": "#D19A66"},
+            "pygments_Number_Float": {"foreground": "#D19A66"},
             "pygments_Literal_Number": {"foreground": "#D19A66"},
-            "pygments_Punctuation": {"foreground": "#1FA5FF"},
-            "pygments_Generic_Prompt": {"foreground": "#ABB2BF"},
-            "pygments_Generic_Traceback": {"foreground": "#E06C75"},
+            "pygments_Literal_Number_Other": {"foreground": "#D19A66"},
+            
+            "pygments_Operator": {"foreground": "#3567D4", "font": ('Consolas', 11)},
+            "pygments_Operator_Word": {"foreground": "#C679DD", "font": ('Consolas', 11, 'bold')},
+            "pygments_Punctuation": {"foreground": "#123AFA"},
+            
+            "pygments_Generic": {"foreground": "#ABB2BF"},
             "pygments_Generic_Deleted": {"foreground": "#E06C75"},
             "pygments_Generic_Emph": {"font": ('Consolas', 10, 'italic')},
             "pygments_Generic_Error": {"foreground": "#E06C75", "underline": True},
             "pygments_Generic_Heading": {"foreground": "#E5C07B", "font": ('Consolas', 12, 'bold')},
             "pygments_Generic_Inserted": {"foreground": "#98C379"},
             "pygments_Generic_Output": {"foreground": "#ABB2BF"},
+            "pygments_Generic_Prompt": {"foreground": "#ABB2BF"},
             "pygments_Generic_Strong": {"font": ('Consolas', 10, 'bold')},
             "pygments_Generic_Subheading": {"foreground": "#E5C07B", "font": ('Consolas', 11, 'bold')},
+            "pygments_Generic_Traceback": {"foreground": "#E06C75"},
+            
+            "pygments_Literal": {"foreground": "#D19A66"}
         }
 
         for tag, config in style_config.items():
             self.chat_text.tag_configure(tag, **config)
-        self.chat_text.tag_lower("code_block", "sel")  # 背景层在选中层之下
-        self.chat_text.tag_raise("sel")  # 选中层始终在最前
+        self.chat_text.tag_lower("code_block", "sel")
+        self.chat_text.tag_raise("sel")
 
 if __name__ == "__main__":
     root = tk.Tk()
