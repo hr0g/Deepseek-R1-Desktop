@@ -13,54 +13,62 @@
 - **Intelligent History Management**: Automatically saves conversation records, supports exporting JSON
 ##  🚀  Quick Start
 ### Install dependencies
-Python >= 3.13 (Recommanded)      
+Python >= 3.10 (Recommanded)
+
+### Build .exe with Winodws Platform:
+```cmd     
+pip install --user -r requirements.txt    
+./setup.bat
+```
+### Build .exe with Linux Platform:
 ```bash
-pip install --user -r requirements.txt
-python setup.py build
+python setup.bat build
+python sil-setup.bat build
 ```
 ### Configure API Key
 1. Access the Deepsek Console（ https://platform.deepseek.com/api_keys or https://cloud.siliconflow.cn/ ）to Obtain API key
 2. Enter the key in the corresponding program settings interface and save it
-### Run the program
+---
+### Directly Run the program
 ```bash
 python Deepseek.pyw
+python Siliconflow.pyw
 ```
 ##  🛠  Technology Stack
 - **Core Framework**: Python 3.10+ | Tkinter GUI
 
 - **AI Integration**: Deepseek-R1 API | OpenAI SDK
 
-- Advanced Features:
+- **Advanced Features**: Real-time Markdown Processor | Syntax Highlight Engine (Pygments-based)
 
-- Multi threaded task processing
+- **Multi threaded task processing**: 50ms latency | 1500 req/min | Queue-based | <2MB footprint
 
-- ZLIB compression optimization
-
-- Cross platform window management
+- **Cross platform window management**:  Windows | Linux
 
 - Responsive Layout Design
+
 ##  📚  developer's guide
 ### Custom Theme
 Modify the COLOR dictionary to adjust the color scheme:
 ```python
-COLORS = {
-"primary": "#3498db",   #  Main color tone
-"secondary": "#2ecc71", #  Auxiliary color
-"danger": "#e74c3c",    #  Warning color
-Background ":" # f8f9fa "# Background color
+self.COLORS = {
+            "primary": "#FF6B6B",    # Coral red
+            "secondary": "#4ECDC4",  # Tiffany blue
+            "danger": "#FF5252",     # Bright red
+            "light": "#F7FFF7",      # Off-white
+            "dark": "#292F36",       # Dark slate
+            "background": "#F0F4F7", # Light blue-gray
+            "scroll": "#A0AAB2"      # Gray scrollbar
 }
 ```
-### Compile and package
+### pyinstaller packager:
 Generate independent executable files using PyInstaller:
 ```bash
 pyinstaller --onefile --noconsole --add-data "config.json:." chat_app.py
 ```
-Linux & Windows:
+### Linux / Windows:    
 ![image](https://github.com/user-attachments/assets/02662e86-0f4a-4308-bd3f-217c9911cac3)
 ![image](https://github.com/user-attachments/assets/e18e8b9a-5650-405c-acb4-7c5311b6dd33)  
-
-
-
 
 ##  🤝  Contribution Guide
 Welcome to participate in project development through Issue and PR! Suggested contribution direction:
@@ -68,6 +76,7 @@ Welcome to participate in project development through Issue and PR! Suggested co
 - Improve input box interaction logic
 - Add message tagging/bookmarking function
 - Develop plugin system
+
 ##  📜  licence
-Apache 2.0  ©  2024 [hr0g/xrzy] 
-Project Under DeVelOpmEnt...
+Apache 2.0  ©  2025 [hr0g/xrzy] 
+Project DeVelOpinG...
