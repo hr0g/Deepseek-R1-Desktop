@@ -13,14 +13,14 @@ executables = [
         base="Win32GUI",
         icon="app.ico",
         copyright="Copyright 2024",
-        trademarks="MyApp™"
+        trademarks="hr0g™"
     )
 ]
 
 setup(
-    name="MyApp",
+    name="hr0g",
     version="1.0",
-    description="示例程序",
+    description="example program",
     options={"build_exe": build_options},
     executables=executables
 )
