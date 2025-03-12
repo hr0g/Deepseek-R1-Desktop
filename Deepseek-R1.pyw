@@ -86,7 +86,7 @@ class ChatApp:
 
         self.load_config()
         self.init_ui()
-        self.load_history() 
+        self.load_history()
         
         self.response_queue = queue.Queue()
         self.setup_ui_updater()
@@ -379,7 +379,7 @@ class ChatApp:
                 pattern = re.compile(r'^#+\s*(.*)$')
                 match = pattern.match(line)
                 self.chat_text.insert(tk.END, match.group(1), "deepseek_header")
-            elif re.match(r'^\d+\.\s+\*\*(.*?)\*\*', line): 
+            elif re.match(r'^\d+\.\s+\*\*(.*?)\*\*', line):
                 pattern = re.compile(r'^(\d+\.\s+)\*\*(.*?)\*\*')
                 match = pattern.match(line)
                 self.chat_text.insert(tk.END, match.group(1) + match.group(2) + '\n', "num_header")
@@ -404,6 +404,7 @@ class ChatApp:
             elif re.match(r'^.*?\*\*(.+?)\*\*.*?$', line):
                 pattern = r"(\*\*.*?\*\*)"
                 parts = re.split(pattern, line)
+                last = parts[-1]
                 for part in parts:
                     if not part:
                         continue
@@ -411,14 +412,18 @@ class ChatApp:
                         self.chat_text.insert(tk.END, part[2:-2], "deepseek_sub_header")
                     else:
                         self.chat_text.insert(tk.END, part)
+                    if part is last:
+                        self.chat_text.insert(tk.END, '\n')
             else:
                 self.chat_text.insert(tk.END, line + '\n')
         else:
+            # 检测代码块结束
             if re.fullmatch(r'^\s*```\s*$', line):
                 self.in_code_block = False
                 self.highlight_code('\n'.join(self.code_buffer))
                 self.code_buffer = []
                 return
+            # 累积代码行
             self.code_buffer.append(line)
 
     def _insert_plain_text(self, text):
@@ -490,7 +495,7 @@ class ChatApp:
             for chunk in response:
                 if chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
-                    self.raw_response_buffer += content
+                    self.raw_response_buffer += content  # 累积原始内容
                     self.response_queue.put(content)
 
             self.response_queue.put(None)
@@ -565,7 +570,7 @@ class ChatApp:
                 else:
                     lang = line.strip()[3:].strip()
                     if lang.startswith("objective"):
-                        current_lang = "objective-c"
+                        current_lang = "objective-c"  # 显式处理Objective-C别名
                     else:
                         current_lang = "python"
                     in_code = True
@@ -607,6 +612,7 @@ class ChatApp:
                     elif re.match(r'^.*?\*\*(.+?)\*\*.*?$', line):
                         pattern = r"(\*\*.*?\*\*)"
                         parts = re.split(pattern, line)
+                        last = parts[-1]
                         for part in parts:
                             if not part:
                                 continue
@@ -614,6 +620,8 @@ class ChatApp:
                                 self.chat_text.insert(tk.END, part[2:-2], "deepseek_sub_header")
                             else:
                                 self.chat_text.insert(tk.END, part)
+                            if part is last:
+                                self.chat_text.insert(tk.END, '\n')
                     else:
                         self.chat_text.insert(tk.END, line + '\n')
 
@@ -834,8 +842,8 @@ class ChatApp:
 
         for tag, config in style_config.items():
             self.chat_text.tag_configure(tag, **config)
-        self.chat_text.tag_lower("code_block", "sel")
-        self.chat_text.tag_raise("sel")
+        self.chat_text.tag_lower("code_block", "sel")  # 背景层在选中层之下
+        self.chat_text.tag_raise("sel")  # 选中层始终在最前
 
 if __name__ == "__main__":
     root = tk.Tk()
