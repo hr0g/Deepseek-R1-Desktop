@@ -109,7 +109,8 @@ class ChatApp:
 
         self.chat_frame = ttk.LabelFrame(self.root)
         self.chat_text = tk.Text(self.chat_frame, state=tk.DISABLED, wrap=tk.WORD)
-        self.chat_text.tag_configure("role", foreground="#3498db", font=('Arial', 12, 'bold'))
+        self.chat_text.tag_configure("user_role", foreground="#3498db", font=('Arial', 12, 'bold'))
+        self.chat_text.tag_configure("assistant_role", foreground="#e67e22", font=('Arial', 12, 'bold'))
         self.scrollbar = ttk.Scrollbar(self.chat_frame, command=self.chat_text.yview)
         self.chat_text.configure(yscrollcommand=self.scrollbar.set)
 
@@ -304,6 +305,9 @@ class ChatApp:
 
     def on_mousewheel(self, event):
         self.input_text.yview_scroll(-1 * (event.delta // 120), "units")
+        _, y_end = self.chat_text.yview()
+        self.auto_scroll = y_end >= 0.999
+        return "break"
 
     def setup_ui_updater(self):
         def check_queue():
@@ -316,6 +320,8 @@ class ChatApp:
                             self.line_buffer=''
                         self.finalize_response()
                         break
+                    _, y_end = self.chat_text.yview()
+                    self.auto_scroll = y_end >= 0.999
                     self.update_streaming_content(content)
             except queue.Empty:
                 pass
@@ -333,7 +339,8 @@ class ChatApp:
         self.process_content(content)
         
         self.chat_text.insert(tk.END, "▌", "streaming")
-        self.chat_text.see(tk.END)
+        if self.auto_scroll:
+            self.chat_text.see(tk.END)
         self.chat_text.config(state=tk.DISABLED)
 
     def process_content(self, content):
@@ -351,7 +358,7 @@ class ChatApp:
 
     def _process_line(self, line):
         if not self.in_code_block:
-            start_match = re.fullmatch(r'^\s*```\s*(\w*)\s*$', line)
+            start_match = re.fullmatch(r'^\s*```\s*([\w+-]*)\s*$', line)
             if start_match:
                 self.in_code_block = True
                 self.code_lang = start_match.group(1).strip() or "python"
@@ -366,16 +373,12 @@ class ChatApp:
             elif re.match(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$', line):
                 pattern = re.compile(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$')
                 match = pattern.match(line)
-                self.chat_text.insert(tk.END, match.group(1) +" " + match.group(2), "deepseek_sub_header")
+                self.chat_text.insert(tk.END, (match.group(1) + " " if match.group(1) else "") + match.group(2), "deepseek_sub_header")
                 self.chat_text.insert(tk.END, match.group(3) + '\n')
             elif re.match(r'^#+\s*(.*)$', line):
                 pattern = re.compile(r'^#+\s*(.*)$')
                 match = pattern.match(line)
                 self.chat_text.insert(tk.END, match.group(1), "deepseek_header")
-            elif re.match(r'^\s+\*\*(.*?)\*\*', line):
-                pattern = re.compile(r'^\s+\*\*(.*?)\*\*')
-                match = pattern.match(line)
-                self.chat_text.insert(tk.END, match.group(1) + '\n', "dot_header")
             elif re.match(r'^\d+\.\s+\*\*(.*?)\*\*', line):
                 pattern = re.compile(r'^(\d+\.\s+)\*\*(.*?)\*\*')
                 match = pattern.match(line)
@@ -394,15 +397,12 @@ class ChatApp:
                 self.chat_text.insert(tk.END, "• " + match.group(1) + '\n')
             else:
                 self.chat_text.insert(tk.END, line + '\n')
-            #self._insert_plain_text(line + '\n')
         else:
-            # 检测代码块结束
             if re.fullmatch(r'^\s*```\s*$', line):
                 self.in_code_block = False
                 self.highlight_code('\n'.join(self.code_buffer))
                 self.code_buffer = []
                 return
-            # 累积代码行
             self.code_buffer.append(line)
 
     def _insert_plain_text(self, text):
@@ -411,9 +411,9 @@ class ChatApp:
         self.chat_text.insert(tk.END, text, "streaming")
         self.chat_text.config(state=tk.DISABLED)
 
-    def highlight_code(self, code):
+    def highlight_code(self, code, lang=None):
         try:
-            lexer = get_lexer_by_name(self.code_lang, stripall=True)
+            lexer = get_lexer_by_name(lang or self.code_lang, stripall=True)
         except:
             lexer = get_lexer_by_name("text")
 
@@ -474,7 +474,7 @@ class ChatApp:
             for chunk in response:
                 if chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
-                    self.raw_response_buffer += content  # 累积原始内容
+                    self.raw_response_buffer += content
                     self.response_queue.put(content)
 
             self.response_queue.put(None)
@@ -523,7 +523,8 @@ class ChatApp:
         self.chat_text.config(state=tk.NORMAL)
 
         self.chat_text.insert(tk.END, f"[{time_str}] ", ("time",))
-        self.chat_text.insert(tk.END, f"{display_role}:\n", ("role", display_role))
+        role_tag = "user_role" if role == "user" else "assistant_role"
+        self.chat_text.insert(tk.END, f"{display_role}:\n", (role_tag,))
 
         if is_streaming:
             self.stream_start = self.chat_text.index("end-1c")
@@ -542,12 +543,15 @@ class ChatApp:
         for line in content.split('\n'):
             if line.strip().startswith("```"):
                 if in_code:
-                    self.highlight_code('\n'.join(code_buffer))
+                    self.highlight_code('\n'.join(code_buffer), current_lang)
                     code_buffer = []
                     in_code = False
                 else:
                     lang = line.strip()[3:].strip()
-                    current_lang = lang if lang else "python"
+                    if lang.startswith("objective"):
+                        current_lang = "objective-c"
+                    else:
+                        current_lang = "python"
                     in_code = True
             else:
                 if in_code:
@@ -562,16 +566,12 @@ class ChatApp:
                     elif re.match(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$', line):
                         pattern = re.compile(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$')
                         match = pattern.match(line)
-                        self.chat_text.insert(tk.END, match.group(1) + " " + match.group(2), "deepseek_sub_header")
+                        self.chat_text.insert(tk.END, (match.group(1) + " " if match.group(1) else "")+ match.group(2), "deepseek_sub_header")
                         self.chat_text.insert(tk.END, match.group(3) + '\n')
                     elif re.match(r'^#+\s*(.*)$', line):
                         pattern = re.compile(r'^#+\s*(.*)$')
                         match = pattern.match(line)
                         self.chat_text.insert(tk.END, match.group(1) + '\n', "deepseek_header")
-                    elif re.match(r'^\s*\*\*(.*?)\*\*', line):
-                        pattern = re.compile(r'^\s*\*\*(.*?)\*\*')
-                        match = pattern.match(line)
-                        self.chat_text.insert(tk.END, match.group(1) + '\n', "dot_header")
                     elif re.match(r'^\d+\.\s+\*\*(.*?)\*\*', line):
                         pattern = re.compile(r'^(\d+\.\s+)\*\*(.*?)\*\*')
                         match = pattern.match(line)
@@ -808,8 +808,8 @@ class ChatApp:
 
         for tag, config in style_config.items():
             self.chat_text.tag_configure(tag, **config)
-        self.chat_text.tag_lower("code_block", "sel")  # 背景层在选中层之下
-        self.chat_text.tag_raise("sel")  # 选中层始终在最前
+        self.chat_text.tag_lower("code_block", "sel")
+        self.chat_text.tag_raise("sel")
 
 if __name__ == "__main__":
     root = tk.Tk()
