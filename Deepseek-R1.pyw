@@ -77,7 +77,6 @@ class ChatApp:
         self.client = None
         self.streaming = False
         self.stream_start = None
-        self.auto_scroll = True
         self.history = []
         self.raw_response_buffer = ""
         self.code_buffer = ""
@@ -110,8 +109,7 @@ class ChatApp:
 
         self.chat_frame = ttk.LabelFrame(self.root)
         self.chat_text = tk.Text(self.chat_frame, state=tk.DISABLED, wrap=tk.WORD)
-        self.chat_text.tag_configure("user_role", foreground="#3498db", font=('Arial', 12, 'bold'))
-        self.chat_text.tag_configure("assistant_role", foreground="#e67e22", font=('Arial', 12, 'bold'))
+        self.chat_text.tag_configure("role", foreground="#3498db", font=('Arial', 12, 'bold'))
         self.scrollbar = ttk.Scrollbar(self.chat_frame, command=self.chat_text.yview)
         self.chat_text.configure(yscrollcommand=self.scrollbar.set)
 
@@ -306,9 +304,6 @@ class ChatApp:
 
     def on_mousewheel(self, event):
         self.input_text.yview_scroll(-1 * (event.delta // 120), "units")
-        """用户手动滚动时更新标志"""
-        _, y_end = self.chat_text.yview()
-        return "break"  # 阻止默认滚动事件
 
     def setup_ui_updater(self):
         def check_queue():
@@ -321,8 +316,6 @@ class ChatApp:
                             self.line_buffer=''
                         self.finalize_response()
                         break
-                    _, y_end = self.chat_text.yview()
-                    self.auto_scroll = y_end >= 0.999
                     self.update_streaming_content(content)
             except queue.Empty:
                 pass
@@ -340,8 +333,7 @@ class ChatApp:
         self.process_content(content)
         
         self.chat_text.insert(tk.END, "▌", "streaming")
-        if self.auto_scroll:
-            self.chat_text.see(tk.END)
+        self.chat_text.see(tk.END)
         self.chat_text.config(state=tk.DISABLED)
 
     def process_content(self, content):
@@ -367,32 +359,39 @@ class ChatApp:
                 return
             if line == "---":
                self.chat_text.insert(tk.END, "\n", "hr")
-            elif re.match(r'^###\s*(.*?)\*\*(.+?)\*\*$', line):
-                pattern = re.compile(r'^###\s*(.*?)\*\*(.+?)\*\*$')
+            elif re.match(r'^###\s+\*\*(.+?)\*\*$', line):
+                pattern = re.compile(r'^###\s+\*\*(.+?)\*\*$')
                 match = pattern.match(line)
-                self.chat_text.insert(tk.END, f"{match.group(1)}{match.group(2)}\n", "deepseek_header")
-            elif re.match(r'^-\s\*\*', line):
-                pattern = re.compile(r'-\s\*\*(.*)\*\*')
-                match = pattern.match(line)
-                self.chat_text.insert(tk.END, f"• {match.group(1)}\n", "dot_header")
-            elif re.match(r'^\s+-\s', line):
-                pattern = re.compile(r'^\s+-\s+(.*)')
-                match = pattern.match(line)
-                self.chat_text.insert(tk.END, f"        • {match.group(1)}\n")
-            elif re.match(r'^-\s', line):
-                pattern = re.compile(r'-\s+(.*)')
-                match = pattern.match(line)
-                self.chat_text.insert(tk.END, f"• {match.group(1)}\n")
+                self.chat_text.insert(tk.END, match.group(1) + '\n', "deepseek_header")
             elif re.match(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$', line):
                 pattern = re.compile(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$')
                 match = pattern.match(line)
-                prefix = f"{match.group(1)} " if match.group(1) else ""
-                self.chat_text.insert(tk.END, prefix + match.group(2), "deepseek_sub_header")
-                self.chat_text.insert(tk.END, f"{match.group(3)}\n")
+                self.chat_text.insert(tk.END, match.group(1) +" " + match.group(2), "deepseek_sub_header")
+                self.chat_text.insert(tk.END, match.group(3) + '\n')
             elif re.match(r'^#+\s*(.*)$', line):
                 pattern = re.compile(r'^#+\s*(.*)$')
                 match = pattern.match(line)
                 self.chat_text.insert(tk.END, match.group(1), "deepseek_header")
+            elif re.match(r'^\s+\*\*(.*?)\*\*', line):
+                pattern = re.compile(r'^\s+\*\*(.*?)\*\*')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, match.group(1) + '\n', "dot_header")
+            elif re.match(r'^\d+\.\s+\*\*(.*?)\*\*', line):
+                pattern = re.compile(r'^(\d+\.\s+)\*\*(.*?)\*\*')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, match.group(1) + match.group(2) + '\n', "num_header")
+            elif re.match(r'^-\s\*\*', line):
+                pattern = re.compile(r'-\s\*\*(.*)\*\*')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, "• " + match.group(1) + '\n', "dot_header")
+            elif re.match(r'^\s+-\s', line):
+                pattern = re.compile(r'^\s+-\s+(.*)')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, "        • " + match.group(1) + '\n')
+            elif re.match(r'^-\s', line):
+                pattern = re.compile(r'-\s+(.*)')
+                match = pattern.match(line)
+                self.chat_text.insert(tk.END, "• " + match.group(1) + '\n')
             else:
                 self.chat_text.insert(tk.END, line + '\n')
             #self._insert_plain_text(line + '\n')
@@ -524,8 +523,7 @@ class ChatApp:
         self.chat_text.config(state=tk.NORMAL)
 
         self.chat_text.insert(tk.END, f"[{time_str}] ", ("time",))
-        role_tag = "user_role" if role == "user" else "assistant_role"
-        self.chat_text.insert(tk.END, f"{display_role}:\n", (role_tag,))
+        self.chat_text.insert(tk.END, f"{display_role}:\n", ("role", display_role))
 
         if is_streaming:
             self.stream_start = self.chat_text.index("end-1c")
@@ -557,32 +555,39 @@ class ChatApp:
                 else:
                     if line == "---":
                        self.chat_text.insert(tk.END, "\n", "hr")
-                    elif re.match(r'^###\s*(.*?)\*\*(.+?)\*\*$', line):
-                        pattern = re.compile(r'^###\s*(.*?)\*\*(.+?)\*\*$')
+                    elif re.match(r'^###\s+\*\*(.+?)\*\*$', line):
+                        pattern = re.compile(r'^###\s+\*\*(.+?)\*\*$')
                         match = pattern.match(line)
-                        self.chat_text.insert(tk.END, f"{match.group(1)}{match.group(2)}\n", "deepseek_header")
-                    elif re.match(r'^-\s\*\*', line):
-                        pattern = re.compile(r'-\s\*\*(.*)\*\*')
-                        match = pattern.match(line)
-                        self.chat_text.insert(tk.END, f"• {match.group(1)}\n", "dot_header")
-                    elif re.match(r'^\s+-\s', line):
-                        pattern = re.compile(r'^\s+-\s+(.*)')
-                        match = pattern.match(line)
-                        self.chat_text.insert(tk.END, f"        • {match.group(1)}\n")
-                    elif re.match(r'^-\s', line):
-                        pattern = re.compile(r'-\s+(.*)')
-                        match = pattern.match(line)
-                        self.chat_text.insert(tk.END, f"• {match.group(1)}\n")
+                        self.chat_text.insert(tk.END, match.group(1) + '\n', "deepseek_header")
                     elif re.match(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$', line):
                         pattern = re.compile(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$')
                         match = pattern.match(line)
-                        prefix = f"{match.group(1)} " if match.group(1) else ""
-                        self.chat_text.insert(tk.END, prefix + match.group(2), "deepseek_sub_header")
-                        self.chat_text.insert(tk.END, f"{match.group(3)}\n")
+                        self.chat_text.insert(tk.END, match.group(1) + " " + match.group(2), "deepseek_sub_header")
+                        self.chat_text.insert(tk.END, match.group(3) + '\n')
                     elif re.match(r'^#+\s*(.*)$', line):
                         pattern = re.compile(r'^#+\s*(.*)$')
                         match = pattern.match(line)
-                        self.chat_text.insert(tk.END, match.group(1), "deepseek_header")
+                        self.chat_text.insert(tk.END, match.group(1) + '\n', "deepseek_header")
+                    elif re.match(r'^\s*\*\*(.*?)\*\*', line):
+                        pattern = re.compile(r'^\s*\*\*(.*?)\*\*')
+                        match = pattern.match(line)
+                        self.chat_text.insert(tk.END, match.group(1) + '\n', "dot_header")
+                    elif re.match(r'^\d+\.\s+\*\*(.*?)\*\*', line):
+                        pattern = re.compile(r'^(\d+\.\s+)\*\*(.*?)\*\*')
+                        match = pattern.match(line)
+                        self.chat_text.insert(tk.END, match.group(1) + match.group(2) + '\n', "num_header")
+                    elif re.match(r'^-\s\*\*', line):
+                        pattern = re.compile(r'-\s\*\*(.*)\*\*')
+                        match = pattern.match(line)
+                        self.chat_text.insert(tk.END, "• " + match.group(1) + '\n', "dot_header")
+                    elif re.match(r'^\s+-\s', line):
+                        pattern = re.compile(r'^\s+-\s+(.*)')
+                        match = pattern.match(line)
+                        self.chat_text.insert(tk.END, "        • " + match.group(1) + '\n')
+                    elif re.match(r'^-\s', line):
+                        pattern = re.compile(r'-\s+(.*)')
+                        match = pattern.match(line)
+                        self.chat_text.insert(tk.END, "• " + match.group(1) + '\n')
                     else:
                         self.chat_text.insert(tk.END, line + '\n')
 
@@ -754,19 +759,31 @@ class ChatApp:
                                    foreground="#2C3E50",
                                    lmargin1=20)
 
+        self.chat_text.tag_configure("pygments_Comment", 
+                                   foreground="#7F848E", 
+                                   font=('Consolas', 10, 'italic'))
+
         style_config = {
             "pygments_Comment": {"foreground": "#7F848E", "font": ('Consolas', 10, 'italic')},
             "pygments_Keyword": {"foreground": "#C678DD", "font": ('Consolas', 10, 'bold')},
             "pygments_String": {"foreground": "#98C379"},
+            "pygments_String_Escape": {"foreground": "#56B6C2", "font": ('Consolas', 10, 'bold')},
             "pygments_Name_Function": {"foreground": "#61AFEF"},
+            "pygments_Number_Bin": {"foreground": "#D19A66"},
+            "pygments_Number_Float": {"foreground": "#D19A66"},
             "pygments_Number": {"foreground": "#D19A66"},
-            "pygments_Operator": {"foreground": "#56B6C2", "font": ('Consolas', 10, 'bold')},
+            "pygments_Operator": {"foreground": "#56B6C2", "font": ('Consolas', 11)},
+            "pygments_Operator_Word": {"foreground": "#C679DD", "font": ('Consolas', 11, 'bold')},
             "pygments_Name_Class": {"foreground": "#E5C07B", "font": ('Consolas', 10, 'bold')},
             "pygments_Name": {"foreground": "#61AFEF"},
             "pygments_Name_Builtin": {"foreground": "#56B6C2"},
             "pygments_Name_Decorator": {"foreground": "#C678DD"},
             "pygments_Name_Attribute": {"foreground": "#E06C75"},
             "pygments_Name_Exception": {"foreground": "#D19A66"},
+            "pygments_Name_Constant": {"foreground": "#D19A66"},
+            "pygments_Name_Label": {"foreground": "#E06C75"},
+            "pygments_Name_Namespace": {"foreground": "#E06C75"},
+            "pygments_Name_Variable": {"foreground": "#E06C75"},
             "pygments_Generic_Heading": {"foreground": "#E5C07B", "font": ('Consolas', 12, 'bold')},
             "pygments_Generic_Subheading": {"foreground": "#E5C07B", "font": ('Consolas', 11, 'bold')},
             "pygments_Keyword_Constant": {"foreground": "#D19A66", "font": ('Consolas', 10, 'bold')},
@@ -776,8 +793,17 @@ class ChatApp:
             "pygments_Name_Tag": {"foreground": "#E06C75"},
             "pygments_Name_Entity": {"foreground": "#D19A66"},
             "pygments_Literal_Number": {"foreground": "#D19A66"},
+            "pygments_Punctuation": {"foreground": "#1FA5FF"},
             "pygments_Generic_Prompt": {"foreground": "#ABB2BF"},
             "pygments_Generic_Traceback": {"foreground": "#E06C75"},
+            "pygments_Generic_Deleted": {"foreground": "#E06C75"},
+            "pygments_Generic_Emph": {"font": ('Consolas', 10, 'italic')},
+            "pygments_Generic_Error": {"foreground": "#E06C75", "underline": True},
+            "pygments_Generic_Heading": {"foreground": "#E5C07B", "font": ('Consolas', 12, 'bold')},
+            "pygments_Generic_Inserted": {"foreground": "#98C379"},
+            "pygments_Generic_Output": {"foreground": "#ABB2BF"},
+            "pygments_Generic_Strong": {"font": ('Consolas', 10, 'bold')},
+            "pygments_Generic_Subheading": {"foreground": "#E5C07B", "font": ('Consolas', 11, 'bold')},
         }
 
         for tag, config in style_config.items():
