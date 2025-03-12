@@ -1,12 +1,10 @@
 from cx_Freeze import setup, Executable
 
-# 基础配置
 build_options = {
     "packages": ["tkinter"],
     "include_files": ["Deepseek-config.json"]
 }
 
-# EXE 目标配置
 executables = [
     Executable(
         script="Deepseek.pyw",
