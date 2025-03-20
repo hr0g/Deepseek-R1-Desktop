@@ -124,7 +124,7 @@ class ChatApp:
         self.input_text.bind("<Right>", self.handle_right_arrow)
         self.input_text.bind("<Return>", self.handle_enter_key)
         self.input_text.bind("<Control-z>", self.handle_undo)
-        self.input_text.bind("<Control-Shift-Z>", self.handle_redo)  # Windows/Linux重做
+        self.input_text.bind("<Control-Shift-Z>", self.handle_redo)
         self.input_text.bind("<Command-y>", self.handle_redo)
 
         self.send_btn = ttk.Button(self.input_frame, command=self.send_message)
@@ -134,7 +134,7 @@ class ChatApp:
         self.status_bar = ttk.Label(self.root, relief=tk.SUNKEN, textvariable=self.status_var)
 
     def setup_layout(self):
-        self.root.geometry("1000x600")
+        self.root.geometry("1200x741")
         self.root.columnconfigure(0, weight=1)
         self.root.columnconfigure(1, weight=1)
         self.root.rowconfigure(1, weight=1)
@@ -411,17 +411,14 @@ class ChatApp:
             else:
                 self.chat_text.insert(tk.END, line + '\n')
         else:
-            # 检测代码块结束
             if re.fullmatch(r'^\s*```\s*$', line):
                 self.in_code_block = False
                 self.highlight_code('\n'.join(self.code_buffer))
                 self.code_buffer = []
                 return
-            # 累积代码行
             self.code_buffer.append(line)
 
     def _insert_plain_text(self, text):
-        """安全插入普通文本"""
         self.chat_text.config(state=tk.NORMAL)
         self.chat_text.insert(tk.END, text, "streaming")
         self.chat_text.config(state=tk.DISABLED)
@@ -489,7 +486,7 @@ class ChatApp:
             for chunk in response:
                 if chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
-                    self.raw_response_buffer += content  # 累积原始内容
+                    self.raw_response_buffer += content
                     self.response_queue.put(content)
 
             self.response_queue.put(None)
@@ -754,16 +751,14 @@ class ChatApp:
 
     def handle_undo(self, event):
         try:
-            # 执行撤销操作并添加分隔符
             self.input_text.edit_undo()
-            self.input_text.edit_separator()  # 添加操作分隔符
-        except tk.TclError:  # 没有可撤销的操作时忽略
+            self.input_text.edit_separator()
+        except tk.TclError:
             pass
-        return "break"  # 阻止默认处理
+        return "break"
 
     def handle_redo(self, event):
         try:
-            # 执行重做操作并添加分隔符
             self.input_text.edit_redo()
             self.input_text.edit_separator()
         except tk.TclError:
