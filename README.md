@@ -67,8 +67,9 @@ Generate independent executable files using PyInstaller:
 pyinstaller --onefile --noconsole --add-data "config.json:." chat_app.py
 ```
 ### Linux / Windows:    
-![image](https://github.com/user-attachments/assets/02662e86-0f4a-4308-bd3f-217c9911cac3)
-![image](https://github.com/user-attachments/assets/e18e8b9a-5650-405c-acb4-7c5311b6dd33)  
+![image](https://github.com/user-attachments/assets/d9e7c05f-bf20-4457-85b1-d2773d915282)
+
+![image](https://github.com/user-attachments/assets/bc097fe3-6538-4d7a-a380-76da648f96ef)
 
 ##  🤝  Contribution Guide
 Welcome to participate in project development through Issue and PR! Suggested contribution direction:
