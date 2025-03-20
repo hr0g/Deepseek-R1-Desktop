@@ -112,17 +112,20 @@ class ChatApp:
         self.chat_text.tag_configure("user_role", foreground="#3498db", font=('Arial', 12, 'bold'))
         self.chat_text.tag_configure("assistant_role", foreground="#e67e22", font=('Arial', 12, 'bold'))
         self.scrollbar = ttk.Scrollbar(self.chat_frame, command=self.chat_text.yview)
-        self.chat_text.configure(yscrollcommand=self.scrollbar.set)
+        self.chat_text.configure(yscrollcommand=self.update_chat_scrollbar)
 
         self.input_frame = ttk.LabelFrame(self.root)
-        self.input_text = tk.Text(self.input_frame, wrap=tk.WORD)
+        self.input_text = tk.Text(self.input_frame, wrap=tk.WORD,undo=True, maxundo=1000)
         self.input_scrollbar = ttk.Scrollbar(self.input_frame, command=self.input_text.yview)
-        self.input_text.configure(yscrollcommand=self.input_scrollbar.set)
+        self.input_text.configure(yscrollcommand=self.update_input_scrollbar)
         self.input_text.bind("<MouseWheel>", self.on_mousewheel)
         self.input_text.bind("<Control-a>", self.handle_ctrl_a)
         self.input_text.bind("<Left>", self.handle_left_arrow)
         self.input_text.bind("<Right>", self.handle_right_arrow)
         self.input_text.bind("<Return>", self.handle_enter_key)
+        self.input_text.bind("<Control-z>", self.handle_undo)
+        self.input_text.bind("<Control-Shift-Z>", self.handle_redo)  # Windows/Linux重做
+        self.input_text.bind("<Command-y>", self.handle_redo)
 
         self.send_btn = ttk.Button(self.input_frame, command=self.send_message)
         self.clear_btn = ttk.Button(self.input_frame, command=self.clear_input)
@@ -147,12 +150,14 @@ class ChatApp:
         self.chat_frame.rowconfigure(0, weight=1)
         self.chat_text.grid(row=0, column=0, sticky="nsew")
         self.scrollbar.grid(row=0, column=1, sticky="ns")
+        self.scrollbar.grid_remove()
 
         self.input_frame.grid(row=1, column=1, padx=10, pady=5, sticky="nsew")
         self.input_frame.columnconfigure(0, weight=1)
         self.input_frame.rowconfigure(0, weight=1)
         self.input_text.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
         self.input_scrollbar.grid(row=0, column=1, sticky="ns")
+        self.input_scrollbar.grid_remove()
         self.send_btn.grid(row=1, column=0, padx=5, pady=2, sticky="ew")
         self.clear_btn.grid(row=2, column=0, padx=5, pady=2, sticky="ew")
 
@@ -346,13 +351,11 @@ class ChatApp:
     def process_content(self, content):
         self.line_buffer += content
         lines = self.line_buffer.split('\n')
-        
+        lines = lines[:-1]
         if self.line_buffer and self.line_buffer[-1] != '\n':
-            self.line_buffer = lines[-1]
-            lines = lines[:-1]
+            return
         else:
             self.line_buffer = ''
-
         for line in lines:
             self._process_line(line.strip('\r'))
 
@@ -365,28 +368,25 @@ class ChatApp:
                 self.code_buffer = []
                 return
             if line == "---":
-               self.chat_text.insert(tk.END, "\n", "hr")
-            elif re.match(r'^###\s+\*\*(.+?)\*\*$', line):
-                pattern = re.compile(r'^###\s+\*\*(.+?)\*\*$')
+                self.chat_text.insert(tk.END, "\n", "hr")
+            elif re.match(r'^#+\s+\*\*(.+?)\*\*$', line):
+                pattern = re.compile(r'^#+\s+\*\*(.+?)\*\*$')
                 match = pattern.match(line)
                 self.chat_text.insert(tk.END, match.group(1) + '\n', "deepseek_header")
-            elif re.match(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$', line):
-                pattern = re.compile(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$')
+            elif re.match(r'^#+\s*(\d*\.*)(.*)\s*\*\*(.*?)\*\*(.*)$', line):
+                pattern = re.compile(r'^#+\s*(\d*\.*)(.*)\s*\*\*(.*?)\*\*(.*)$')
                 match = pattern.match(line)
-                self.chat_text.insert(tk.END, (match.group(1) + " " if match.group(1) else "") + match.group(2), "deepseek_sub_header")
-                self.chat_text.insert(tk.END, match.group(3) + '\n')
+                self.chat_text.insert(tk.END, (match.group(1) if match.group(1) else "")+ match.group(2)+match.group(3), "deepseek_sub_header")
+                self.chat_text.insert(tk.END, match.group(4) + '\n')
             elif re.match(r'^#+\s*(.*)$', line):
                 pattern = re.compile(r'^#+\s*(.*)$')
                 match = pattern.match(line)
-                self.chat_text.insert(tk.END, match.group(1), "deepseek_header")
-            elif re.match(r'^\d+\.\s+\*\*(.*?)\*\*', line):
-                pattern = re.compile(r'^(\d+\.\s+)\*\*(.*?)\*\*')
+                self.chat_text.insert(tk.END, match.group(1) + '\n', "deepseek_header")
+            elif re.match( r'^\s*(?:(-)\s*\*\*(.*?)\*\*|(\d+\.)\s*\*\*(.*?)\*\*)(.*)$', line):
+                pattern = re.compile(r'^\s*(?:(-)\s*\*\*(.*?)\*\*|(\d+\.)\s*\*\*(.*?)\*\*)(.*)$')
                 match = pattern.match(line)
-                self.chat_text.insert(tk.END, match.group(1) + match.group(2) + '\n', "num_header")
-            elif re.match(r'^-\s\*\*', line):
-                pattern = re.compile(r'-\s\*\*(.*)\*\*')
-                match = pattern.match(line)
-                self.chat_text.insert(tk.END, "• " + match.group(1) + '\n', "dot_header")
+                self.chat_text.insert(tk.END, ("• " + match.group(2)) if match.group(1) else (match.group(3) + match.group(4)), "num_header")
+                self.chat_text.insert(tk.END, match.group(5) + '\n')
             elif re.match(r'^\s+-\s', line):
                 pattern = re.compile(r'^\s+-\s+(.*)')
                 match = pattern.match(line)
@@ -403,7 +403,7 @@ class ChatApp:
                     if not part:
                         continue
                     if part.startswith("**"):
-                        self.chat_text.insert(tk.END, part[2:-2], "deepseek_sub_header")
+                        self.chat_text.insert(tk.END, part[2:-2], "deepseek_bold")
                     else:
                         self.chat_text.insert(tk.END, part)
                     if part is last:
@@ -574,27 +574,24 @@ class ChatApp:
                 else:
                     if line == "---":
                        self.chat_text.insert(tk.END, "\n", "hr")
-                    elif re.match(r'^###\s+\*\*(.+?)\*\*$', line):
-                        pattern = re.compile(r'^###\s+\*\*(.+?)\*\*$')
+                    elif re.match(r'^#+\s+\*\*(.+?)\*\*$', line):
+                        pattern = re.compile(r'^#+\s+\*\*(.+?)\*\*$')
                         match = pattern.match(line)
                         self.chat_text.insert(tk.END, match.group(1) + '\n', "deepseek_header")
-                    elif re.match(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$', line):
-                        pattern = re.compile(r'^#*\s*(\d*\.*)\s*\*\*(.*?)\*\*(.*)$')
+                    elif re.match(r'^#+\s*(\d*\.*)(.*)\s*\*\*(.*?)\*\*(.*)$', line):
+                        pattern = re.compile(r'^#+\s*(\d*\.*)(.*)\s*\*\*(.*?)\*\*(.*)$')
                         match = pattern.match(line)
-                        self.chat_text.insert(tk.END, (match.group(1) + " " if match.group(1) else "")+ match.group(2), "deepseek_sub_header")
-                        self.chat_text.insert(tk.END, match.group(3) + '\n')
+                        self.chat_text.insert(tk.END, (match.group(1) if match.group(1) else "")+ match.group(2)+match.group(3), "deepseek_sub_header")
+                        self.chat_text.insert(tk.END, match.group(4) + '\n')
                     elif re.match(r'^#+\s*(.*)$', line):
                         pattern = re.compile(r'^#+\s*(.*)$')
                         match = pattern.match(line)
                         self.chat_text.insert(tk.END, match.group(1) + '\n', "deepseek_header")
-                    elif re.match(r'^\d+\.\s+\*\*(.*?)\*\*', line):
-                        pattern = re.compile(r'^(\d+\.\s+)\*\*(.*?)\*\*')
+                    elif re.match( r'^\s*(?:(-)\s*\*\*(.*?)\*\*|(\d+\.)\s*\*\*(.*?)\*\*)(.*)$', line):
+                        pattern = re.compile(r'^\s*(?:(-)\s*\*\*(.*?)\*\*|(\d+\.)\s*\*\*(.*?)\*\*)(.*)$')
                         match = pattern.match(line)
-                        self.chat_text.insert(tk.END, match.group(1) + match.group(2) + '\n', "num_header")
-                    elif re.match(r'^-\s\*\*', line):
-                        pattern = re.compile(r'-\s\*\*(.*)\*\*')
-                        match = pattern.match(line)
-                        self.chat_text.insert(tk.END, "• " + match.group(1) + '\n', "dot_header")
+                        self.chat_text.insert(tk.END, ("• " + match.group(2)) if match.group(1) else (match.group(3) + match.group(4)), "num_header")
+                        self.chat_text.insert(tk.END, match.group(5) + '\n')
                     elif re.match(r'^\s+-\s', line):
                         pattern = re.compile(r'^\s+-\s+(.*)')
                         match = pattern.match(line)
@@ -611,7 +608,7 @@ class ChatApp:
                             if not part:
                                 continue
                             if part.startswith("**"):
-                                self.chat_text.insert(tk.END, part[2:-2], "deepseek_sub_header")
+                                self.chat_text.insert(tk.END, part[2:-2], "deepseek_bold")
                             else:
                                 self.chat_text.insert(tk.END, part)
                             if part is last:
@@ -737,8 +734,41 @@ class ChatApp:
         if event.state & 0x0001:
             return
         else:
+            self.input_text.edit_separator()
             self.send_message()
             return "break"
+
+    def update_input_scrollbar(self, first, last):
+        self.input_scrollbar.set(first, last)
+        if float(first) <= 0.0 and float(last) >= 1.0:
+            self.input_scrollbar.grid_remove()
+        else:
+            self.input_scrollbar.grid()
+
+    def update_chat_scrollbar(self, first, last):
+        self.scrollbar.set(first, last)
+        if float(first) <= 0.0 and float(last) >= 1.0:
+            self.scrollbar.grid_remove()
+        else:
+            self.scrollbar.grid()
+
+    def handle_undo(self, event):
+        try:
+            # 执行撤销操作并添加分隔符
+            self.input_text.edit_undo()
+            self.input_text.edit_separator()  # 添加操作分隔符
+        except tk.TclError:  # 没有可撤销的操作时忽略
+            pass
+        return "break"  # 阻止默认处理
+
+    def handle_redo(self, event):
+        try:
+            # 执行重做操作并添加分隔符
+            self.input_text.edit_redo()
+            self.input_text.edit_separator()
+        except tk.TclError:
+            pass
+        return "break"
 
     def configure_code_tags(self):
         self.chat_text.tag_configure("code_block",
@@ -778,14 +808,13 @@ class ChatApp:
                                    lmargin1=10)
 
         self.chat_text.tag_configure("deepseek_bold",
-                                   font=('Microsoft YaHei', 10, 'bold italic'),
+                                   font=('Microsoft YaHei', 10, 'bold'),
                                    foreground="#2C3E50",
                                    lmargin1=10)
 
         self.chat_text.tag_configure("num_header",
                                    font=('Microsoft YaHei', 11, 'bold'),
-                                   foreground="#2C3E50",
-                                   lmargin1=20)
+                                   foreground="#2C3E50")
 
         self.chat_text.tag_configure("pygments_Comment", 
                                    foreground="#7F848E", 
